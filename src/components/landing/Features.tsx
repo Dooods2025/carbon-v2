@@ -9,12 +9,12 @@ const features = [
   {
     icon: LineChart,
     title: "Track Over Time",
-    description: "Monitor your emissions history with beautiful charts and visualizations. See your progress at a glance.",
+    description: "Monitor your emissions history with beautiful charts and visualisations. See your progress at a glance.",
   },
   {
     icon: Lightbulb,
     title: "Smart Insights",
-    description: "Receive personalized recommendations to reduce your carbon footprint based on your unique data.",
+    description: "Receive personalised recommendations to reduce your carbon footprint based on your unique data.",
   },
   {
     icon: FileText,
