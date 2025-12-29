@@ -114,9 +114,9 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Left side - decorative */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary relative overflow-hidden">
+    <div className="h-screen bg-background flex overflow-hidden">
+      {/* Left side - decorative (fixed, no scroll) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-primary relative overflow-hidden flex-shrink-0">
         <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/80" />
         <div className="absolute top-20 left-10 w-72 h-72 bg-primary-foreground/10 rounded-full blur-3xl" />
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary-foreground/5 rounded-full blur-3xl" />
@@ -132,9 +132,10 @@ const Auth = () => {
         </div>
       </div>
 
-      {/* Right side - form */}
-      <div className="flex-1 flex flex-col justify-center items-center p-8 overflow-y-auto">
-        <div className="w-full max-w-md py-8">
+      {/* Right side - form (scrollable) */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col justify-center items-center min-h-full p-8">
+          <div className="w-full max-w-md py-8">
           <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8">
             <ArrowLeft className="w-4 h-4" />
             Back to home
@@ -336,6 +337,7 @@ const Auth = () => {
               {isSignUp ? "Sign in" : "Sign up"}
             </button>
           </p>
+          </div>
         </div>
       </div>
     </div>
