@@ -1,16 +1,45 @@
 import { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { CloudUpload, FileSpreadsheet, X, CheckCircle2, AlertCircle, Info, Leaf } from "lucide-react";
+import { CloudUpload, FileSpreadsheet, X, CheckCircle2, AlertCircle, Info, Leaf, Building2, MapPin, Users, Phone, Mail, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
+
+interface BusinessProfile {
+  companyName: string;
+  industry: string;
+  address: string;
+  city: string;
+  country: string;
+  employees: string;
+  phone: string;
+  email: string;
+  website: string;
+}
 
 const Upload = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfile>({
+    companyName: "",
+    industry: "",
+    address: "",
+    city: "",
+    country: "",
+    employees: "",
+    phone: "",
+    email: "",
+    website: "",
+  });
+
+  const handleProfileChange = (field: keyof BusinessProfile, value: string) => {
+    setBusinessProfile(prev => ({ ...prev, [field]: value }));
+  };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -85,7 +114,6 @@ const Upload = () => {
     
     // Simulate upload process
     setTimeout(() => {
-      // For demo purposes, randomly succeed or fail
       const success = Math.random() > 0.2;
       if (success) {
         setStatus("success");
@@ -99,7 +127,7 @@ const Upload = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm">
+      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
@@ -110,24 +138,230 @@ const Upload = () => {
             </span>
           </Link>
           <Link to="/dashboard">
-            <Button variant="outline">Back to Dashboard</Button>
+            <Button variant="outline">Dashboard</Button>
           </Link>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
-        <div className="max-w-2xl mx-auto">
-          {/* Upload Card */}
-          <div className="bg-card rounded-2xl shadow-lg border border-border p-8">
+        <div className="max-w-4xl mx-auto space-y-8">
+          
+          {/* Business Profile Section */}
+          <div className="bg-card rounded-2xl shadow-lg border border-border overflow-hidden">
+            {/* Profile Header */}
+            <div className="bg-primary/5 border-b border-border p-6 md:p-8">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Building2 className="w-7 h-7 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+                    Business Profile
+                  </h1>
+                  <p className="text-muted-foreground mt-1">
+                    Complete your company details to generate accurate emissions reports
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Profile Form */}
+            <div className="p-6 md:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Company Name */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="companyName" className="text-foreground font-medium">
+                    Company Name
+                  </Label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="companyName"
+                      placeholder="Enter your company name"
+                      value={businessProfile.companyName}
+                      onChange={(e) => handleProfileChange("companyName", e.target.value)}
+                      className="pl-10 h-12"
+                    />
+                  </div>
+                </div>
+
+                {/* Industry */}
+                <div className="space-y-2">
+                  <Label htmlFor="industry" className="text-foreground font-medium">
+                    Industry
+                  </Label>
+                  <Input
+                    id="industry"
+                    placeholder="e.g., Manufacturing, Technology"
+                    value={businessProfile.industry}
+                    onChange={(e) => handleProfileChange("industry", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
+                {/* Number of Employees */}
+                <div className="space-y-2">
+                  <Label htmlFor="employees" className="text-foreground font-medium">
+                    Number of Employees
+                  </Label>
+                  <div className="relative">
+                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="employees"
+                      placeholder="e.g., 50-100"
+                      value={businessProfile.employees}
+                      onChange={(e) => handleProfileChange("employees", e.target.value)}
+                      className="pl-10 h-12"
+                    />
+                  </div>
+                </div>
+
+                {/* Address */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="address" className="text-foreground font-medium">
+                    Business Address
+                  </Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="address"
+                      placeholder="Street address"
+                      value={businessProfile.address}
+                      onChange={(e) => handleProfileChange("address", e.target.value)}
+                      className="pl-10 h-12"
+                    />
+                  </div>
+                </div>
+
+                {/* City */}
+                <div className="space-y-2">
+                  <Label htmlFor="city" className="text-foreground font-medium">
+                    City
+                  </Label>
+                  <Input
+                    id="city"
+                    placeholder="Enter city"
+                    value={businessProfile.city}
+                    onChange={(e) => handleProfileChange("city", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
+                {/* Country */}
+                <div className="space-y-2">
+                  <Label htmlFor="country" className="text-foreground font-medium">
+                    Country
+                  </Label>
+                  <Input
+                    id="country"
+                    placeholder="Enter country"
+                    value={businessProfile.country}
+                    onChange={(e) => handleProfileChange("country", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-foreground font-medium">
+                    Phone Number
+                  </Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+1 (555) 000-0000"
+                      value={businessProfile.phone}
+                      onChange={(e) => handleProfileChange("phone", e.target.value)}
+                      className="pl-10 h-12"
+                    />
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="businessEmail" className="text-foreground font-medium">
+                    Business Email
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="businessEmail"
+                      type="email"
+                      placeholder="contact@company.com"
+                      value={businessProfile.email}
+                      onChange={(e) => handleProfileChange("email", e.target.value)}
+                      className="pl-10 h-12"
+                    />
+                  </div>
+                </div>
+
+                {/* Website */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="website" className="text-foreground font-medium">
+                    Website
+                  </Label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="website"
+                      type="url"
+                      placeholder="https://www.company.com"
+                      value={businessProfile.website}
+                      onChange={(e) => handleProfileChange("website", e.target.value)}
+                      className="pl-10 h-12"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Profile Summary Card */}
+              {businessProfile.companyName && (
+                <div className="mt-8 p-6 rounded-xl bg-accent/30 border border-border">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary mb-3">
+                        Profile Preview
+                      </span>
+                      <h3 className="text-xl font-display font-bold text-foreground">
+                        {businessProfile.companyName}
+                      </h3>
+                      {businessProfile.industry && (
+                        <p className="text-muted-foreground mt-1">{businessProfile.industry}</p>
+                      )}
+                    </div>
+                  </div>
+                  {(businessProfile.city || businessProfile.country) && (
+                    <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
+                      <MapPin className="w-4 h-4" />
+                      <span>
+                        {[businessProfile.city, businessProfile.country].filter(Boolean).join(", ")}
+                      </span>
+                    </div>
+                  )}
+                  {businessProfile.employees && (
+                    <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      <span>{businessProfile.employees} employees</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Upload Section */}
+          <div className="bg-card rounded-2xl shadow-lg border border-border p-6 md:p-8">
             {/* Header Section */}
             <div className="text-center mb-8">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                 <CloudUpload className="w-8 h-8 text-primary" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-2">
+              <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-2">
                 Upload Emissions Data
-              </h1>
+              </h2>
               <p className="text-muted-foreground">
                 Upload your Excel or CSV file to calculate emissions
               </p>
