@@ -49,9 +49,9 @@ const Auth = () => {
       description: "Redirecting to dashboard...",
     });
 
-    // Redirect to dashboard
+    // Redirect to upload page
     setTimeout(() => {
-      navigate("/dashboard");
+      navigate("/upload");
     }, 500);
 
     setIsLoading(false);
