@@ -66,12 +66,12 @@ const Dashboard = () => {
 
   // Previous reports data
   const previousReports = [
-    { id: 1, title: "Q4 2024 Emissions Report", period: "Oct - Dec 2024", emissions: "1,250.5 t CO2e", generated: "15/12/2024" },
-    { id: 2, title: "Q3 2024 Emissions Report", period: "Jul - Sep 2024", emissions: "1,180.3 t CO2e", generated: "30/09/2024" },
-    { id: 3, title: "Q2 2024 Emissions Report", period: "Apr - Jun 2024", emissions: "1,320.8 t CO2e", generated: "30/06/2024" },
-    { id: 4, title: "Q1 2024 Emissions Report", period: "Jan - Mar 2024", emissions: "1,198.2 t CO2e", generated: "31/03/2024" },
-    { id: 5, title: "Annual 2023 Report", period: "Jan - Dec 2023", emissions: "4,820.5 t CO2e", generated: "15/01/2024" },
-    { id: 6, title: "Annual 2022 Report", period: "Jan - Dec 2022", emissions: "4,520.1 t CO2e", generated: "15/01/2023" },
+    { id: 1, title: "Q4 2024 Dashboard Report", period: "Oct - Dec 2024", emissions: "1,250.5 t CO2e", generated: "15/12/2024" },
+    { id: 2, title: "Q3 2024 Dashboard Report", period: "Jul - Sep 2024", emissions: "1,180.3 t CO2e", generated: "30/09/2024" },
+    { id: 3, title: "Q2 2024 Dashboard Report", period: "Apr - Jun 2024", emissions: "1,320.8 t CO2e", generated: "30/06/2024" },
+    { id: 4, title: "Q1 2024 Dashboard Report", period: "Jan - Mar 2024", emissions: "1,198.2 t CO2e", generated: "31/03/2024" },
+    { id: 5, title: "Annual 2023 Dashboard Report", period: "Jan - Dec 2023", emissions: "4,820.5 t CO2e", generated: "15/01/2024" },
+    { id: 6, title: "Annual 2022 Dashboard Report", period: "Jan - Dec 2022", emissions: "4,520.1 t CO2e", generated: "15/01/2023" },
   ];
 
   // Category data for bar chart
