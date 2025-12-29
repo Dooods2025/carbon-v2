@@ -1,7 +1,15 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Upload,
   FileText,
@@ -13,6 +21,7 @@ import {
   Zap,
   Flame,
   Fuel,
+  GitCompare,
 } from "lucide-react";
 import {
   BarChart,
@@ -37,6 +46,8 @@ import {
 } from "@/components/ui/table";
 
 const Dashboard = () => {
+  const [compareYear1, setCompareYear1] = useState("2024");
+  const [compareYear2, setCompareYear2] = useState("2023");
 
   // Category data for bar chart
   const categoryData = [
@@ -80,6 +91,80 @@ const Dashboard = () => {
     { name: "Natural Gas - Kalgoorlie", emissions: 38.92, icon: Flame, color: "text-orange-500", bgColor: "bg-orange-100" },
     { name: "Fleet Fuel - All Sites", emissions: 28.45, icon: Fuel, color: "text-red-500", bgColor: "bg-red-100" },
   ];
+
+  // Year comparison data
+  const yearlyData: Record<string, { total: number; scope1: number; scope2: number; scope3: number; categories: { name: string; emissions: number }[] }> = {
+    "2024": {
+      total: 224.16,
+      scope1: 85.42,
+      scope2: 98.32,
+      scope3: 40.42,
+      categories: [
+        { name: "Electricity", emissions: 98.32 },
+        { name: "Gas", emissions: 52.18 },
+        { name: "Flights", emissions: 28.45 },
+        { name: "Water", emissions: 8.92 },
+        { name: "Waste", emissions: 18.76 },
+        { name: "Fuel", emissions: 17.53 },
+      ],
+    },
+    "2023": {
+      total: 213.02,
+      scope1: 87.21,
+      scope2: 90.45,
+      scope3: 35.36,
+      categories: [
+        { name: "Electricity", emissions: 93.45 },
+        { name: "Gas", emissions: 53.28 },
+        { name: "Flights", emissions: 26.21 },
+        { name: "Water", emissions: 9.05 },
+        { name: "Waste", emissions: 19.38 },
+        { name: "Fuel", emissions: 17.40 },
+      ],
+    },
+    "2022": {
+      total: 198.45,
+      scope1: 82.15,
+      scope2: 85.30,
+      scope3: 31.00,
+      categories: [
+        { name: "Electricity", emissions: 88.12 },
+        { name: "Gas", emissions: 49.85 },
+        { name: "Flights", emissions: 22.18 },
+        { name: "Water", emissions: 8.45 },
+        { name: "Waste", emissions: 17.65 },
+        { name: "Fuel", emissions: 16.95 },
+      ],
+    },
+    "2021": {
+      total: 185.32,
+      scope1: 78.45,
+      scope2: 80.12,
+      scope3: 26.75,
+      categories: [
+        { name: "Electricity", emissions: 82.35 },
+        { name: "Gas", emissions: 46.72 },
+        { name: "Flights", emissions: 18.95 },
+        { name: "Water", emissions: 7.85 },
+        { name: "Waste", emissions: 16.20 },
+        { name: "Fuel", emissions: 15.82 },
+      ],
+    },
+  };
+
+  const year1Data = yearlyData[compareYear1];
+  const year2Data = yearlyData[compareYear2];
+
+  const calculateChange = (current: number, previous: number) => {
+    const change = ((current - previous) / previous) * 100;
+    return change;
+  };
+
+  const comparisonChartData = year1Data.categories.map((cat, index) => ({
+    name: cat.name,
+    [compareYear1]: cat.emissions,
+    [compareYear2]: year2Data.categories[index].emissions,
+  }));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -356,7 +441,148 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Data Table */}
+        {/* Year Comparison Section */}
+        <Card className="shadow-md hover:shadow-lg transition-shadow mb-8">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <GitCompare className="h-5 w-5 text-primary" />
+                Year-on-Year Comparison
+              </CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Compare</span>
+                  <Select value={compareYear1} onValueChange={setCompareYear1}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2024">2024</SelectItem>
+                      <SelectItem value="2023">2023</SelectItem>
+                      <SelectItem value="2022">2022</SelectItem>
+                      <SelectItem value="2021">2021</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <span className="text-sm text-muted-foreground">vs</span>
+                <Select value={compareYear2} onValueChange={setCompareYear2}>
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2024">2024</SelectItem>
+                    <SelectItem value="2023">2023</SelectItem>
+                    <SelectItem value="2022">2022</SelectItem>
+                    <SelectItem value="2021">2021</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Summary Cards */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-foreground">Summary Comparison</h4>
+                
+                {/* Total Emissions Comparison */}
+                <div className="p-4 rounded-xl bg-muted/30 border border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">Total Emissions</span>
+                    <div className={`flex items-center gap-1 text-sm font-medium ${
+                      calculateChange(year1Data.total, year2Data.total) > 0 ? 'text-red-500' : 'text-green-600'
+                    }`}>
+                      {calculateChange(year1Data.total, year2Data.total) > 0 ? (
+                        <TrendingUp className="h-4 w-4" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4" />
+                      )}
+                      {Math.abs(calculateChange(year1Data.total, year2Data.total)).toFixed(1)}%
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-2xl font-bold text-foreground">{year1Data.total.toFixed(2)}</span>
+                      <span className="text-sm text-muted-foreground ml-1">t CO2e ({compareYear1})</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-lg text-muted-foreground">{year2Data.total.toFixed(2)}</span>
+                      <span className="text-sm text-muted-foreground ml-1">t CO2e ({compareYear2})</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Scope Comparisons */}
+                {[
+                  { label: "Scope 1", key1: year1Data.scope1, key2: year2Data.scope1 },
+                  { label: "Scope 2", key1: year1Data.scope2, key2: year2Data.scope2 },
+                  { label: "Scope 3", key1: year1Data.scope3, key2: year2Data.scope3 },
+                ].map((scope) => {
+                  const change = calculateChange(scope.key1, scope.key2);
+                  return (
+                    <div key={scope.label} className="p-3 rounded-lg bg-muted/20 flex items-center justify-between">
+                      <span className="font-medium text-foreground">{scope.label}</span>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <span className="font-bold text-foreground">{scope.key1.toFixed(2)}</span>
+                          <span className="text-xs text-muted-foreground ml-1">vs {scope.key2.toFixed(2)}</span>
+                        </div>
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                          change > 0 
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        }`}>
+                          {change > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                          {Math.abs(change).toFixed(1)}%
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Comparison Chart */}
+              <div>
+                <h4 className="font-medium text-foreground mb-4">Category Comparison</h4>
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={comparisonChartData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
+                      <XAxis 
+                        type="number"
+                        axisLine={false} 
+                        tickLine={false}
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                        tickFormatter={(value) => `${value}t`}
+                      />
+                      <YAxis 
+                        type="category"
+                        dataKey="name"
+                        axisLine={false} 
+                        tickLine={false}
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                        width={80}
+                      />
+                      <Tooltip 
+                        formatter={(value: number, name: string) => [`${value.toFixed(2)} t CO2e`, name]}
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey={compareYear1} fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey={compareYear2} fill="hsl(var(--primary) / 0.4)" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+
         <Card className="shadow-md">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold">Detailed Emissions Breakdown</CardTitle>
