@@ -233,8 +233,16 @@ const FileUpload = () => {
                   <p className="font-medium text-foreground">File Requirements</p>
                   <ul className="text-sm text-muted-foreground mt-2 space-y-1">
                     <li>• Supported formats: Excel (.xlsx, .xls) or CSV</li>
-                    <li>• Include columns for activity, quantity, and unit</li>
                     <li>• Maximum file size: 10MB</li>
+                  </ul>
+                  <p className="font-medium text-foreground mt-4">Required Sheets</p>
+                  <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                    <li>• <strong>Electricity</strong> – Columns: Date, Site, Usage</li>
+                    <li>• <strong>Gas</strong> – Columns: Date, Site, Usage</li>
+                    <li>• <strong>Flights</strong> – Columns: Date, Site, Activity-pkm</li>
+                    <li>• <strong>Water</strong> – Columns: Date, Site, Usage</li>
+                    <li>• <strong>Waste</strong> – Columns: Date, Site, Usage</li>
+                    <li>• <strong>Fuel</strong> – Columns: Date, Site, Usage</li>
                   </ul>
                 </div>
               </div>

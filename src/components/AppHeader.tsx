@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Leaf, LogOut } from "lucide-react";
+import { Leaf, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const AppHeader = () => {
@@ -10,6 +10,7 @@ const AppHeader = () => {
     { label: "Dashboard", path: "/dashboard" },
     { label: "Reports", path: "/reports" },
     { label: "Upload", path: "/file-upload" },
+    { label: "Profile", path: "/upload" },
   ];
 
   return (
