@@ -75,7 +75,7 @@ const BusinessProfileSidebar = ({
 
       {!hasAnyData && (
         <p className="text-sm text-muted-foreground text-center py-4 mt-4">
-          Complete the form to see your profile summary
+          Complete the Information to help generate recommendations
         </p>
       )}
     </aside>

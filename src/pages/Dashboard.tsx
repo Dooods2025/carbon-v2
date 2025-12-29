@@ -235,8 +235,8 @@ const Dashboard = () => {
                   <span>-2.1% Direct emissions</span>
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                <Factory className="h-5 w-5 text-muted-foreground" />
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Factory className="h-5 w-5 text-primary" />
               </div>
             </div>
           </div>
@@ -255,8 +255,8 @@ const Dashboard = () => {
                   <span>+8.4% Indirect emissions</span>
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Building2 className="h-5 w-5 text-primary" />
               </div>
             </div>
           </div>
@@ -275,8 +275,8 @@ const Dashboard = () => {
                   <span>Value chain emissions</span>
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                <Globe className="h-5 w-5 text-muted-foreground" />
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Globe className="h-5 w-5 text-primary" />
               </div>
             </div>
           </div>
