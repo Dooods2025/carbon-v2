@@ -22,6 +22,10 @@ import {
   Flame,
   Fuel,
   GitCompare,
+  Leaf,
+  Factory,
+  Building2,
+  Globe,
 } from "lucide-react";
 import {
   BarChart,
@@ -176,7 +180,7 @@ const Dashboard = () => {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
             <p className="text-muted-foreground mt-1">
-              Track and analyze your carbon emissions data
+              Track and analyse your carbon emissions data
             </p>
           </div>
           <div className="flex gap-3">
@@ -212,7 +216,7 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center">
-                <ArrowUp className="h-5 w-5" />
+                <Leaf className="h-5 w-5" />
               </div>
             </div>
           </div>
@@ -232,7 +236,7 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                <ArrowUp className="h-5 w-5 text-muted-foreground" />
+                <Factory className="h-5 w-5 text-muted-foreground" />
               </div>
             </div>
           </div>
@@ -252,7 +256,7 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                <ArrowUp className="h-5 w-5 text-muted-foreground" />
+                <Building2 className="h-5 w-5 text-muted-foreground" />
               </div>
             </div>
           </div>
@@ -272,7 +276,7 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                <ArrowUp className="h-5 w-5 text-muted-foreground" />
+                <Globe className="h-5 w-5 text-muted-foreground" />
               </div>
             </div>
           </div>
