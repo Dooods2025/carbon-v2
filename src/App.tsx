@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
 import FileUpload from "./pages/FileUpload";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/file-upload" element={<FileUpload />} />
+          <Route path="/reports" element={<Reports />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
