@@ -160,18 +160,20 @@ const Upload = () => {
       <AppHeader />
 
       <main className="container mx-auto px-4 py-12 pt-28">
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8">
-          {/* Sidebar */}
-          <BusinessProfileSidebar
-            companyName={profile.companyName}
-            abn={profile.abn}
-            contactEmail={profile.contactEmail}
-            industry={profile.industry}
-            sites={profile.sites}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
+          {/* Sidebar - shows after form on mobile */}
+          <div className="order-2 lg:order-1">
+            <BusinessProfileSidebar
+              companyName={profile.companyName}
+              abn={profile.abn}
+              contactEmail={profile.contactEmail}
+              industry={profile.industry}
+              sites={profile.sites}
+            />
+          </div>
 
-          {/* Main Form */}
-          <div className="space-y-8">
+          {/* Main Form - shows first on mobile */}
+          <div className="order-1 lg:order-2 space-y-8">
             {/* Emissions Summary Cards */}
             <EmissionsSummaryCards
               totalEmissions={0}
