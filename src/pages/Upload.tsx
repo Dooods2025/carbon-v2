@@ -1,500 +1,465 @@
-import { useState, useCallback } from "react";
-import { Link } from "react-router-dom";
-import { CloudUpload, FileSpreadsheet, X, CheckCircle2, AlertCircle, Info, Leaf, Building2, MapPin, Users, Phone, Mail, Globe } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { Building2, Settings, Leaf as LeafIcon, DollarSign } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-
-type UploadStatus = "idle" | "uploading" | "success" | "error";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import AppHeader from "@/components/AppHeader";
+import BusinessProfileSidebar from "@/components/BusinessProfileSidebar";
 
 interface BusinessProfile {
+  // Essential Info
   companyName: string;
   industry: string;
-  address: string;
-  city: string;
-  country: string;
   employees: string;
-  phone: string;
-  email: string;
-  website: string;
+  sites: string;
+  businessType: string;
+  // Operational Details
+  buildingType: string;
+  operatingHours: string;
+  energySources: string;
+  fleetSize: string;
+  fleetType: string;
+  // Sustainability Context
+  initiatives: string[];
+  target: string;
+  budgetAppetite: string;
 }
 
+const industries = [
+  "Professional Services",
+  "Manufacturing",
+  "Retail",
+  "Hospitality",
+  "Healthcare",
+  "Education",
+  "Construction",
+  "Technology",
+  "Other",
+];
+
+const businessTypes = [
+  "Office-based",
+  "Production/Manufacturing",
+  "Mixed operations",
+  "Remote-first",
+];
+
+const buildingTypes = [
+  "Own property",
+  "Leased",
+  "Shared office space",
+];
+
+const operatingHoursOptions = [
+  "Standard business hours",
+  "24/7 operations",
+  "Shift work",
+];
+
+const energySourceOptions = [
+  "Grid electricity only",
+  "Some renewable energy",
+  "Mostly renewable",
+  "On-site solar/wind",
+  "Gas heating",
+];
+
+const fleetSizeOptions = [
+  "No vehicles",
+  "Small fleet (<10 vehicles)",
+  "Medium fleet (10-50)",
+  "Large fleet (50+)",
+];
+
+const fleetTypeOptions = [
+  "Petrol",
+  "Diesel",
+  "Hybrid",
+  "Electric",
+];
+
+const initiativeOptions = [
+  "None yet",
+  "Recycling programs",
+  "Energy efficiency measures",
+  "Renewable energy",
+  "Carbon offsetting",
+];
+
+const targetOptions = [
+  "No formal target",
+  "Reduce by X% in Y years",
+  "Net zero by specific year",
+  "Compliance with regulations",
+];
+
+const budgetOptions = [
+  "Looking for no-cost changes only",
+  "Small investments (<$10k)",
+  "Medium investments ($10k-$100k)",
+  "Large investments (>$100k)",
+  "ROI-dependent",
+];
+
 const Upload = () => {
-  const [file, setFile] = useState<File | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [status, setStatus] = useState<UploadStatus>("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [businessProfile, setBusinessProfile] = useState<BusinessProfile>({
+  const [profile, setProfile] = useState<BusinessProfile>({
     companyName: "",
     industry: "",
-    address: "",
-    city: "",
-    country: "",
     employees: "",
-    phone: "",
-    email: "",
-    website: "",
+    sites: "",
+    businessType: "",
+    buildingType: "",
+    operatingHours: "",
+    energySources: "",
+    fleetSize: "",
+    fleetType: "",
+    initiatives: [],
+    target: "",
+    budgetAppetite: "",
   });
 
-  const handleProfileChange = (field: keyof BusinessProfile, value: string) => {
-    setBusinessProfile(prev => ({ ...prev, [field]: value }));
+  const handleChange = (field: keyof BusinessProfile, value: string | string[]) => {
+    setProfile((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && isValidFileType(droppedFile)) {
-      setFile(droppedFile);
-      setStatus("idle");
-      setErrorMessage("");
-    } else {
-      setErrorMessage("Please upload an Excel (.xlsx, .xls) or CSV file.");
-      setStatus("error");
-    }
-  }, []);
-
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile && isValidFileType(selectedFile)) {
-      setFile(selectedFile);
-      setStatus("idle");
-      setErrorMessage("");
-    } else if (selectedFile) {
-      setErrorMessage("Please upload an Excel (.xlsx, .xls) or CSV file.");
-      setStatus("error");
-    }
-  }, []);
-
-  const isValidFileType = (file: File) => {
-    const validTypes = [
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.ms-excel",
-      "text/csv",
-      ".xlsx",
-      ".xls",
-      ".csv"
-    ];
-    return validTypes.includes(file.type) || 
-           file.name.endsWith(".xlsx") || 
-           file.name.endsWith(".xls") || 
-           file.name.endsWith(".csv");
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
-
-  const removeFile = () => {
-    setFile(null);
-    setStatus("idle");
-    setErrorMessage("");
-  };
-
-  const handleUpload = async () => {
-    if (!file) return;
-    
-    setStatus("uploading");
-    
-    // Simulate upload process
-    setTimeout(() => {
-      const success = Math.random() > 0.2;
-      if (success) {
-        setStatus("success");
-      } else {
-        setStatus("error");
-        setErrorMessage("Failed to process file. Please check the format and try again.");
+  const handleInitiativeToggle = (initiative: string) => {
+    setProfile((prev) => {
+      const current = prev.initiatives;
+      if (current.includes(initiative)) {
+        return { ...prev, initiatives: current.filter((i) => i !== initiative) };
       }
-    }, 2000);
+      return { ...prev, initiatives: [...current, initiative] };
+    });
+  };
+
+  const handleSaveProfile = () => {
+    console.log("Saving profile:", profile);
+    // TODO: Save to backend
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <Leaf className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-display text-xl font-bold text-foreground">
-              Carbonly
-            </span>
-          </Link>
-          <Link to="/dashboard">
-            <Button variant="outline">Dashboard</Button>
-          </Link>
-        </div>
-      </header>
+      <AppHeader />
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto space-y-8">
-          
-          {/* Business Profile Section */}
-          <div className="bg-card rounded-2xl shadow-lg border border-border overflow-hidden">
-            {/* Profile Header */}
-            <div className="bg-primary/5 border-b border-border p-6 md:p-8">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Building2 className="w-7 h-7 text-primary" />
+      <main className="container mx-auto px-4 py-12 pt-28">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8">
+          {/* Sidebar */}
+          <BusinessProfileSidebar
+            companyName={profile.companyName}
+            industry={profile.industry}
+            employees={profile.employees}
+            sites={profile.sites}
+            businessType={profile.businessType}
+          />
+
+          {/* Main Form */}
+          <div className="space-y-8">
+            {/* Essential Info Section */}
+            <section className="bg-card rounded-2xl border border-border p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-                    Business Profile
-                  </h1>
-                  <p className="text-muted-foreground mt-1">
-                    Complete your company details to generate accurate emissions reports
+                  <h2 className="text-xl font-display font-bold text-foreground">
+                    Essential Information
+                  </h2>
+                  <p className="text-sm text-muted-foreground">Basic company details</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="companyName">Company Name</Label>
+                  <Input
+                    id="companyName"
+                    placeholder="Enter your company name"
+                    value={profile.companyName}
+                    onChange={(e) => handleChange("companyName", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Industry/Sector</Label>
+                  <Select
+                    value={profile.industry}
+                    onValueChange={(value) => handleChange("industry", value)}
+                  >
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {industries.map((ind) => (
+                        <SelectItem key={ind} value={ind}>
+                          {ind}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="employees">Number of Employees</Label>
+                  <Input
+                    id="employees"
+                    placeholder="e.g., 50"
+                    value={profile.employees}
+                    onChange={(e) => handleChange("employees", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sites">Number of Sites/Locations</Label>
+                  <Input
+                    id="sites"
+                    placeholder="e.g., 3"
+                    value={profile.sites}
+                    onChange={(e) => handleChange("sites", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Primary Business Type</Label>
+                  <Select
+                    value={profile.businessType}
+                    onValueChange={(value) => handleChange("businessType", value)}
+                  >
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {businessTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </section>
+
+            {/* Operational Details Section */}
+            <section className="bg-card rounded-2xl border border-border p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-display font-bold text-foreground">
+                    Operational Details
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    How your business operates
                   </p>
                 </div>
               </div>
-            </div>
 
-            {/* Profile Form */}
-            <div className="p-6 md:p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Company Name */}
-                <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="companyName" className="text-foreground font-medium">
-                    Company Name
-                  </Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="companyName"
-                      placeholder="Enter your company name"
-                      value={businessProfile.companyName}
-                      onChange={(e) => handleProfileChange("companyName", e.target.value)}
-                      className="pl-10 h-12"
-                    />
-                  </div>
-                </div>
-
-                {/* Industry */}
                 <div className="space-y-2">
-                  <Label htmlFor="industry" className="text-foreground font-medium">
-                    Industry
-                  </Label>
-                  <Input
-                    id="industry"
-                    placeholder="e.g., Manufacturing, Technology"
-                    value={businessProfile.industry}
-                    onChange={(e) => handleProfileChange("industry", e.target.value)}
-                    className="h-12"
-                  />
-                </div>
-
-                {/* Number of Employees */}
-                <div className="space-y-2">
-                  <Label htmlFor="employees" className="text-foreground font-medium">
-                    Number of Employees
-                  </Label>
-                  <div className="relative">
-                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="employees"
-                      placeholder="e.g., 50-100"
-                      value={businessProfile.employees}
-                      onChange={(e) => handleProfileChange("employees", e.target.value)}
-                      className="pl-10 h-12"
-                    />
-                  </div>
-                </div>
-
-                {/* Address */}
-                <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="address" className="text-foreground font-medium">
-                    Business Address
-                  </Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="address"
-                      placeholder="Street address"
-                      value={businessProfile.address}
-                      onChange={(e) => handleProfileChange("address", e.target.value)}
-                      className="pl-10 h-12"
-                    />
-                  </div>
-                </div>
-
-                {/* City */}
-                <div className="space-y-2">
-                  <Label htmlFor="city" className="text-foreground font-medium">
-                    City
-                  </Label>
-                  <Input
-                    id="city"
-                    placeholder="Enter city"
-                    value={businessProfile.city}
-                    onChange={(e) => handleProfileChange("city", e.target.value)}
-                    className="h-12"
-                  />
-                </div>
-
-                {/* Country */}
-                <div className="space-y-2">
-                  <Label htmlFor="country" className="text-foreground font-medium">
-                    Country
-                  </Label>
-                  <Input
-                    id="country"
-                    placeholder="Enter country"
-                    value={businessProfile.country}
-                    onChange={(e) => handleProfileChange("country", e.target.value)}
-                    className="h-12"
-                  />
-                </div>
-
-                {/* Phone */}
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-foreground font-medium">
-                    Phone Number
-                  </Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+1 (555) 000-0000"
-                      value={businessProfile.phone}
-                      onChange={(e) => handleProfileChange("phone", e.target.value)}
-                      className="pl-10 h-12"
-                    />
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="businessEmail" className="text-foreground font-medium">
-                    Business Email
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="businessEmail"
-                      type="email"
-                      placeholder="contact@company.com"
-                      value={businessProfile.email}
-                      onChange={(e) => handleProfileChange("email", e.target.value)}
-                      className="pl-10 h-12"
-                    />
-                  </div>
-                </div>
-
-                {/* Website */}
-                <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="website" className="text-foreground font-medium">
-                    Website
-                  </Label>
-                  <div className="relative">
-                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="website"
-                      type="url"
-                      placeholder="https://www.company.com"
-                      value={businessProfile.website}
-                      onChange={(e) => handleProfileChange("website", e.target.value)}
-                      className="pl-10 h-12"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Profile Summary Card */}
-              {businessProfile.companyName && (
-                <div className="mt-8 p-6 rounded-xl bg-accent/30 border border-border">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary mb-3">
-                        Profile Preview
-                      </span>
-                      <h3 className="text-xl font-display font-bold text-foreground">
-                        {businessProfile.companyName}
-                      </h3>
-                      {businessProfile.industry && (
-                        <p className="text-muted-foreground mt-1">{businessProfile.industry}</p>
-                      )}
-                    </div>
-                  </div>
-                  {(businessProfile.city || businessProfile.country) && (
-                    <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
-                      <MapPin className="w-4 h-4" />
-                      <span>
-                        {[businessProfile.city, businessProfile.country].filter(Boolean).join(", ")}
-                      </span>
-                    </div>
-                  )}
-                  {businessProfile.employees && (
-                    <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      <span>{businessProfile.employees} employees</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Upload Section */}
-          <div className="bg-card rounded-2xl shadow-lg border border-border p-6 md:p-8">
-            {/* Header Section */}
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                <CloudUpload className="w-8 h-8 text-primary" />
-              </div>
-              <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-2">
-                Upload Emissions Data
-              </h2>
-              <p className="text-muted-foreground">
-                Upload your Excel or CSV file to calculate emissions
-              </p>
-            </div>
-
-            {/* Drag and Drop Zone */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={cn(
-                "relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 cursor-pointer",
-                isDragging 
-                  ? "border-primary bg-primary/5 scale-[1.02]" 
-                  : "border-border hover:border-primary/50 hover:bg-accent/30",
-                file && "border-primary bg-primary/5"
-              )}
-            >
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileSelect}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              
-              {!file ? (
-                <div className="space-y-4">
-                  <div className="w-12 h-12 mx-auto rounded-full bg-muted flex items-center justify-center">
-                    <CloudUpload className={cn(
-                      "w-6 h-6 transition-colors",
-                      isDragging ? "text-primary" : "text-muted-foreground"
-                    )} />
-                  </div>
-                  <div>
-                    <p className="text-foreground font-medium">
-                      Drag and drop your emissions data file here
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      or click to select file (Excel or CSV)
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between bg-primary/10 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <FileSpreadsheet className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-foreground truncate max-w-[200px] md:max-w-[300px]">
-                        {file.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatFileSize(file.size)}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeFile();
-                    }}
-                    className="w-8 h-8 rounded-full bg-muted hover:bg-destructive/10 flex items-center justify-center transition-colors group"
+                  <Label>Building Type</Label>
+                  <Select
+                    value={profile.buildingType}
+                    onValueChange={(value) => handleChange("buildingType", value)}
                   >
-                    <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
-                  </button>
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Select building type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {buildingTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-            </div>
 
-            {/* Upload Button */}
-            <div className="mt-6">
-              <Button
-                onClick={handleUpload}
-                disabled={!file || status === "uploading"}
-                className="w-full h-12 text-base font-medium"
-              >
-                {status === "uploading" ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Processing...
-                  </span>
-                ) : (
-                  "Generate Report"
+                <div className="space-y-2">
+                  <Label>Operating Hours</Label>
+                  <Select
+                    value={profile.operatingHours}
+                    onValueChange={(value) => handleChange("operatingHours", value)}
+                  >
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Select hours" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {operatingHoursOptions.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Current Energy Sources</Label>
+                  <Select
+                    value={profile.energySources}
+                    onValueChange={(value) => handleChange("energySources", value)}
+                  >
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Select energy source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {energySourceOptions.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Fleet Size</Label>
+                  <Select
+                    value={profile.fleetSize}
+                    onValueChange={(value) => handleChange("fleetSize", value)}
+                  >
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Select fleet size" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fleetSizeOptions.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {profile.fleetSize && profile.fleetSize !== "No vehicles" && (
+                  <div className="space-y-2">
+                    <Label>Fleet Type</Label>
+                    <Select
+                      value={profile.fleetType}
+                      onValueChange={(value) => handleChange("fleetType", value)}
+                    >
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Select fleet type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fleetTypeOptions.map((opt) => (
+                          <SelectItem key={opt} value={opt}>
+                            {opt}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
-              </Button>
-            </div>
-
-            {/* Status Messages */}
-            {status === "success" && (
-              <div className="mt-6 p-4 rounded-lg bg-green-50 border border-green-200 flex items-center gap-3 animate-fade-in">
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <p className="text-green-800 text-sm">
-                  File processed successfully! Your emissions report is ready.
-                </p>
               </div>
-            )}
+            </section>
 
-            {status === "error" && errorMessage && (
-              <div className="mt-6 p-4 rounded-lg bg-red-50 border border-red-200 flex items-center gap-3 animate-fade-in">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                <p className="text-red-800 text-sm">{errorMessage}</p>
-              </div>
-            )}
-
-            {/* Requirements Info Box */}
-            <div className="mt-8 p-4 rounded-lg bg-blue-50 border border-blue-100">
-              <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium mb-2">File Requirements:</p>
-                  <ul className="list-disc list-inside space-y-1 text-blue-700">
-                    <li>Excel file (.xlsx or .xls) or CSV format</li>
-                    <li>Must contain sheets: Electricity, Gas, Flights, Water, Waste, Fuel</li>
-                    <li>Each sheet should have columns: Date, Site, Usage (or Activity-pkm for Flights)</li>
-                  </ul>
+            {/* Sustainability Context Section */}
+            <section className="bg-card rounded-2xl border border-border p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <LeafIcon className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-display font-bold text-foreground">
+                    Sustainability Context
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Your current sustainability journey
+                  </p>
                 </div>
               </div>
+
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label>Current Sustainability Initiatives</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {initiativeOptions.map((initiative) => (
+                      <div
+                        key={initiative}
+                        className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-accent/30 transition-colors"
+                      >
+                        <Checkbox
+                          id={initiative}
+                          checked={profile.initiatives.includes(initiative)}
+                          onCheckedChange={() => handleInitiativeToggle(initiative)}
+                        />
+                        <label
+                          htmlFor={initiative}
+                          className="text-sm font-medium text-foreground cursor-pointer flex-1"
+                        >
+                          {initiative}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>Target/Goals</Label>
+                    <Select
+                      value={profile.target}
+                      onValueChange={(value) => handleChange("target", value)}
+                    >
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Select target" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {targetOptions.map((opt) => (
+                          <SelectItem key={opt} value={opt}>
+                            {opt}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" />
+                      Budget Appetite
+                    </Label>
+                    <Select
+                      value={profile.budgetAppetite}
+                      onValueChange={(value) => handleChange("budgetAppetite", value)}
+                    >
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Select budget" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {budgetOptions.map((opt) => (
+                          <SelectItem key={opt} value={opt}>
+                            {opt}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Save Button */}
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSaveProfile}
+                className="gradient-primary text-primary-foreground px-8 h-12"
+              >
+                Save Profile
+              </Button>
             </div>
           </div>
         </div>
