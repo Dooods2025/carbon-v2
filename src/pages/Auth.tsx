@@ -68,7 +68,7 @@ const Auth = () => {
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-primary-foreground">
           <Leaf className="w-16 h-16 mb-6" />
           <h1 className="text-4xl font-display font-bold mb-4 text-center">
-            Carbon Emissions Dashboard
+            Carbon Emissions Calculator
           </h1>
           <p className="text-lg text-primary-foreground/80 text-center max-w-md">
             Track, measure, and reduce your carbon footprint with our powerful emissions calculator.
@@ -89,7 +89,7 @@ const Auth = () => {
               <Leaf className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="text-xl font-display font-semibold text-foreground">
-              Carbon Emissions Dashboard
+              Carbon Emissions Calculator
             </span>
           </div>
 
@@ -99,7 +99,7 @@ const Auth = () => {
           <p className="text-muted-foreground mb-8">
             {isSignUp
               ? "Enter your details to get started"
-              : "Enter your credentials to access your dashboard"}
+              : "Enter your credentials to access your profile and dashboard"}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
