@@ -3,21 +3,16 @@ import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
-  Cloud,
-  Flame,
-  Zap,
-  Calendar,
   Upload,
   FileText,
-  Plane,
-  Droplets,
-  Trash2,
-  Fuel,
   ArrowUp,
   ArrowDown,
-  Building2,
   TrendingUp,
   TrendingDown,
+  MapPin,
+  Zap,
+  Flame,
+  Fuel,
 } from "lucide-react";
 import {
   BarChart,
@@ -71,6 +66,20 @@ const Dashboard = () => {
   ];
 
   const totalEmissions = tableData.reduce((sum, row) => sum + row.emissions, 0);
+
+  // Site data
+  const siteData = [
+    { name: "Bibra Lake", emissions: 112.45, percentage: 50.2, trend: "up", change: 3.1 },
+    { name: "Kalgoorlie", emissions: 78.32, percentage: 34.9, trend: "down", change: 1.8 },
+    { name: "Australind", emissions: 33.39, percentage: 14.9, trend: "up", change: 2.4 },
+  ];
+
+  // Top emission sources
+  const topSources = [
+    { name: "Electricity - Bibra Lake", emissions: 52.18, icon: Zap, color: "text-blue-500", bgColor: "bg-blue-100" },
+    { name: "Natural Gas - Kalgoorlie", emissions: 38.92, icon: Flame, color: "text-orange-500", bgColor: "bg-orange-100" },
+    { name: "Fleet Fuel - All Sites", emissions: 28.45, icon: Fuel, color: "text-red-500", bgColor: "bg-red-100" },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -275,6 +284,73 @@ const Dashboard = () => {
                     />
                   </PieChart>
                 </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Emissions by Site & Top Sources Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Emissions by Site */}
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                Emissions by Site
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {siteData.map((site) => (
+                  <div key={site.name} className="flex items-center justify-between p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <MapPin className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{site.name}</p>
+                        <p className="text-sm text-muted-foreground">{site.percentage}% of total</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-foreground">{site.emissions.toFixed(2)} t</p>
+                      <div className={`flex items-center justify-end gap-1 text-xs ${site.trend === 'up' ? 'text-red-500' : 'text-green-600'}`}>
+                        {site.trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        {site.trend === 'up' ? '+' : '-'}{site.change}%
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Top Three Emissions Sources */}
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-semibold">Top Three Emissions Sources</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {topSources.map((source, index) => {
+                  const IconComponent = source.icon;
+                  return (
+                    <div key={source.name} className="flex items-center gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold text-sm">
+                        {index + 1}
+                      </div>
+                      <div className={`w-10 h-10 rounded-lg ${source.bgColor} flex items-center justify-center`}>
+                        <IconComponent className={`h-5 w-5 ${source.color}`} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground">{source.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-foreground">{source.emissions.toFixed(2)} t CO2e</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
