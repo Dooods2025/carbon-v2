@@ -15,17 +15,6 @@ const Footer = () => {
             </span>
           </div>
           
-          <nav className="flex items-center gap-8">
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Features
-            </a>
-            <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              How It Works
-            </a>
-            <Link to="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Sign In
-            </Link>
-          </nav>
         </div>
         
         <div className="border-t border-border mt-8 pt-8 text-center">
