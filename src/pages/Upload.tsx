@@ -520,7 +520,7 @@ const Upload = () => {
                     </h3>
                     <p className="text-sm text-muted-foreground max-w-md mb-4">
                       Complete your business profile and upload emissions data to receive 
-                      personalized recommendations for reducing your carbon footprint.
+                      personalised recommendations for reducing your carbon footprint.
                     </p>
                     <Button className="gradient-primary">
                       <Sparkles className="w-4 h-4 mr-2" />

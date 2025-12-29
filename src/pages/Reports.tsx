@@ -225,7 +225,7 @@ const Reports = () => {
                         Executive Summary
                       </h3>
                       <p className="text-muted-foreground">
-                        This report provides a comprehensive overview of your organization's 
+                        This report provides a comprehensive overview of your organisation's 
                         carbon emissions across all measured categories. Total emissions for 
                         the reporting period amount to {totalEmissions.toLocaleString()} tonnes 
                         of CO2 equivalent (t CO2e).

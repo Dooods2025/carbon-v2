@@ -233,7 +233,7 @@ const FileUpload = () => {
               </div>
               <ul className="text-sm text-primary space-y-2 ml-7">
                 <li className="list-disc">Excel file (.xlsx or .xls) or CSV format</li>
-                <li className="list-disc">Must contain sheets: Electricity, Gas, Flights, Water, Waste, Fuel</li>
+                <li className="list-disc">Must contain sheets: Electricity, Gas, Fuel, Flights, Water, Waste</li>
                 <li className="list-disc">Each sheet should have columns: Date, Site, Usage (or Activity-pkm for Flights)</li>
               </ul>
             </div>
