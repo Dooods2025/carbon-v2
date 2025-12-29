@@ -86,7 +86,7 @@ const Reports = () => {
     return (
       <div className="min-h-screen bg-background">
         <AppHeader />
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 pt-24 pb-8">
           <Card className="max-w-lg mx-auto shadow-lg">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -111,7 +111,7 @@ const Reports = () => {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 pt-24 pb-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground">
             Emissions Report
