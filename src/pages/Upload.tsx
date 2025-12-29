@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles } from "lucide-react";
+import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles, Pencil } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import AppHeader from "@/components/AppHeader";
 import BusinessProfileSidebar from "@/components/BusinessProfileSidebar";
 import EmissionsSummaryCards from "@/components/EmissionsSummaryCards";
+
 interface BusinessProfile {
   // Essential Info
   companyName: string;
+  abn: string;
+  contactEmail: string;
   industry: string;
   employees: string;
   sites: string;
@@ -112,6 +115,8 @@ const budgetOptions = [
 const Upload = () => {
   const [profile, setProfile] = useState<BusinessProfile>({
     companyName: "",
+    abn: "",
+    contactEmail: "",
     industry: "",
     employees: "",
     sites: "",
@@ -125,6 +130,11 @@ const Upload = () => {
     target: "",
     budgetAppetite: "",
   });
+
+  const handleEditProfile = () => {
+    // Scroll to essential info section
+    document.getElementById("essential-info")?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const handleChange = (field: keyof BusinessProfile, value: string | string[]) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -154,10 +164,10 @@ const Upload = () => {
           {/* Sidebar */}
           <BusinessProfileSidebar
             companyName={profile.companyName}
+            abn={profile.abn}
+            contactEmail={profile.contactEmail}
             industry={profile.industry}
-            employees={profile.employees}
             sites={profile.sites}
-            businessType={profile.businessType}
           />
 
           {/* Main Form */}
@@ -170,7 +180,7 @@ const Upload = () => {
             />
 
             {/* Essential Info Section */}
-            <section className="bg-card rounded-2xl border border-border p-6 md:p-8">
+            <section id="essential-info" className="bg-card rounded-2xl border border-border p-6 md:p-8">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Building2 className="w-5 h-5 text-primary" />
@@ -184,13 +194,36 @@ const Upload = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2 space-y-2">
+                <div className="space-y-2">
                   <Label htmlFor="companyName">Company Name</Label>
                   <Input
                     id="companyName"
                     placeholder="Enter your company name"
                     value={profile.companyName}
                     onChange={(e) => handleChange("companyName", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="abn">ABN</Label>
+                  <Input
+                    id="abn"
+                    placeholder="e.g., 12 345 678 901"
+                    value={profile.abn}
+                    onChange={(e) => handleChange("abn", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="contactEmail">Company Contact Email</Label>
+                  <Input
+                    id="contactEmail"
+                    type="email"
+                    placeholder="contact@company.com"
+                    value={profile.contactEmail}
+                    onChange={(e) => handleChange("contactEmail", e.target.value)}
                     className="h-12"
                   />
                 </div>
@@ -528,8 +561,16 @@ const Upload = () => {
               </div>
             </section>
 
-            {/* Save Button */}
-            <div className="flex justify-end">
+            {/* Save & Edit Buttons */}
+            <div className="flex justify-end gap-3">
+              <Button
+                onClick={handleEditProfile}
+                variant="outline"
+                className="px-8 h-12"
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit Profile
+              </Button>
               <Button
                 onClick={handleSaveProfile}
                 className="gradient-primary text-primary-foreground px-8 h-12"
