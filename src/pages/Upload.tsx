@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Settings, Leaf as LeafIcon, DollarSign } from "lucide-react";
+import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -454,6 +454,75 @@ const Upload = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Insights & Recommendations Section */}
+            <section className="bg-card rounded-2xl border border-border p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Lightbulb className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-display font-bold text-foreground">
+                    Insights & Recommendations
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    AI-powered suggestions to reduce your carbon footprint
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Placeholder for insights */}
+                <div className="bg-muted/30 rounded-xl p-6 border border-dashed border-border">
+                  <div className="flex flex-col items-center justify-center text-center py-8">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                      <Sparkles className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Generate Insights
+                    </h3>
+                    <p className="text-sm text-muted-foreground max-w-md mb-4">
+                      Complete your business profile and upload emissions data to receive 
+                      personalized recommendations for reducing your carbon footprint.
+                    </p>
+                    <Button className="gradient-primary">
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate Recommendations
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Sample insight cards (will be populated with real data) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-50">
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-800 flex items-center justify-center shrink-0">
+                        <Lightbulb className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-foreground">Switch to LED Lighting</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Potential savings: 2.5t CO2e/year
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-800 flex items-center justify-center shrink-0">
+                        <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-foreground">Optimize HVAC Schedule</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Potential savings: 4.2t CO2e/year
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -10,8 +10,8 @@ const AppHeader = () => {
     { label: "Profile", path: "/upload" },
     { label: "Upload", path: "/file-upload" },
     { label: "Reports", path: "/reports" },
-    { label: "Planner", path: "/reduction-planner" },
     { label: "Dashboard", path: "/dashboard" },
+    { label: "Planner", path: "/reduction-planner" },
   ];
 
   return (
