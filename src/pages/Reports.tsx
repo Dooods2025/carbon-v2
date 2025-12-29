@@ -5,74 +5,73 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { 
-  Zap, 
-  Flame, 
-  Plane, 
-  Droplets, 
-  Trash2, 
-  Fuel, 
   Upload, 
   Printer, 
-  Download 
+  Download,
+  FileText,
+  Eye
 } from "lucide-react";
+
+interface PreviousReport {
+  id: string;
+  name: string;
+  date: string;
+  totalEmissions: number;
+  period: string;
+}
 
 interface EmissionCategory {
   name: string;
   emissions: number;
   percentage: number;
-  icon: React.ReactNode;
-  gradientClass: string;
 }
 
 const Reports = () => {
-  const [hasReport] = useState(true); // Toggle this based on actual data
+  const [hasReport] = useState(true);
+  const [selectedReport, setSelectedReport] = useState<PreviousReport | null>(null);
 
   // Mock data - replace with actual data from your backend
-  const totalEmissions = 1250.5;
-  const categories: EmissionCategory[] = [
+  const previousReports: PreviousReport[] = [
     {
-      name: "Electricity",
-      emissions: 420.3,
-      percentage: 33.6,
-      icon: <Zap className="h-8 w-8" />,
-      gradientClass: "from-blue-500 to-blue-600",
+      id: "1",
+      name: "Q4 2024 Emissions Report",
+      date: "2024-12-15",
+      totalEmissions: 1250.5,
+      period: "Oct - Dec 2024",
     },
     {
-      name: "Gas",
-      emissions: 285.7,
-      percentage: 22.8,
-      icon: <Flame className="h-8 w-8" />,
-      gradientClass: "from-orange-500 to-orange-600",
+      id: "2",
+      name: "Q3 2024 Emissions Report",
+      date: "2024-09-30",
+      totalEmissions: 1180.3,
+      period: "Jul - Sep 2024",
     },
     {
-      name: "Flights",
-      emissions: 195.2,
-      percentage: 15.6,
-      icon: <Plane className="h-8 w-8" />,
-      gradientClass: "from-purple-500 to-purple-600",
+      id: "3",
+      name: "Q2 2024 Emissions Report",
+      date: "2024-06-30",
+      totalEmissions: 1320.8,
+      period: "Apr - Jun 2024",
     },
     {
-      name: "Water",
-      emissions: 125.8,
-      percentage: 10.1,
-      icon: <Droplets className="h-8 w-8" />,
-      gradientClass: "from-cyan-500 to-cyan-600",
-    },
-    {
-      name: "Waste",
-      emissions: 145.3,
-      percentage: 11.6,
-      icon: <Trash2 className="h-8 w-8" />,
-      gradientClass: "from-amber-700 to-amber-800",
-    },
-    {
-      name: "Fuel",
-      emissions: 78.2,
-      percentage: 6.3,
-      icon: <Fuel className="h-8 w-8" />,
-      gradientClass: "from-red-500 to-red-600",
+      id: "4",
+      name: "Q1 2024 Emissions Report",
+      date: "2024-03-31",
+      totalEmissions: 1410.2,
+      period: "Jan - Mar 2024",
     },
   ];
+
+  const categories: EmissionCategory[] = [
+    { name: "Electricity", emissions: 420.3, percentage: 33.6 },
+    { name: "Gas", emissions: 285.7, percentage: 22.8 },
+    { name: "Flights", emissions: 195.2, percentage: 15.6 },
+    { name: "Water", emissions: 125.8, percentage: 10.1 },
+    { name: "Waste", emissions: 145.3, percentage: 11.6 },
+    { name: "Fuel", emissions: 78.2, percentage: 6.3 },
+  ];
+
+  const totalEmissions = selectedReport?.totalEmissions || 1250.5;
 
   const handlePrint = () => {
     window.print();
@@ -123,14 +122,14 @@ const Reports = () => {
         </div>
 
         <Card className="shadow-lg">
-          <Tabs defaultValue="summary" className="w-full">
+          <Tabs defaultValue="previous-reports" className="w-full">
             <div className="border-b">
               <TabsList className="h-12 w-full justify-start rounded-none bg-transparent p-0">
                 <TabsTrigger
-                  value="summary"
+                  value="previous-reports"
                   className="relative h-12 rounded-none border-b-2 border-transparent px-6 font-medium text-muted-foreground transition-all data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary hover:text-foreground"
                 >
-                  Summary
+                  Previous Reports
                 </TabsTrigger>
                 <TabsTrigger
                   value="full-report"
@@ -141,41 +140,47 @@ const Reports = () => {
               </TabsList>
             </div>
 
-            <TabsContent value="summary" className="p-6">
-              {/* Total Emissions Header */}
-              <div className="mb-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
-                <p className="text-sm text-muted-foreground mb-1">
-                  Total Carbon Emissions
-                </p>
-                <p className="text-3xl font-bold text-primary">
-                  {totalEmissions.toLocaleString()} <span className="text-lg font-normal">t CO2e</span>
-                </p>
-              </div>
-
-              {/* Category Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {categories.map((category) => (
+            <TabsContent value="previous-reports" className="p-6">
+              <div className="space-y-4">
+                {previousReports.map((report) => (
                   <div
-                    key={category.name}
-                    className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${category.gradientClass} p-5 text-white shadow-md transition-transform duration-200 hover:scale-105 cursor-pointer`}
+                    key={report.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors gap-4"
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="text-sm font-medium opacity-90 mb-1">
-                          {category.name}
+                        <h3 className="font-medium text-foreground">
+                          {report.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {report.period} • {report.totalEmissions.toLocaleString()} t CO2e
                         </p>
-                        <p className="text-2xl font-bold">
-                          {category.emissions.toLocaleString()}
-                          <span className="text-sm font-normal ml-1">t CO2e</span>
-                        </p>
-                        <p className="text-xs opacity-75 mt-1">
-                          {category.percentage}% of total
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Generated: {new Date(report.date).toLocaleDateString()}
                         </p>
                       </div>
-                      <div className="opacity-80">{category.icon}</div>
                     </div>
-                    {/* Decorative circle */}
-                    <div className="absolute -bottom-4 -right-4 w-24 h-24 rounded-full bg-white/10" />
+                    <div className="flex gap-3 sm:flex-shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedReport(report)}
+                        className="border-primary text-primary hover:bg-primary/10"
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Report
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="gradient-primary"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download PDF
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
