@@ -13,7 +13,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import AppHeader from "@/components/AppHeader";
 import BusinessProfileSidebar from "@/components/BusinessProfileSidebar";
-
+import EmissionsSummaryCards from "@/components/EmissionsSummaryCards";
 interface BusinessProfile {
   // Essential Info
   companyName: string;
@@ -162,6 +162,13 @@ const Upload = () => {
 
           {/* Main Form */}
           <div className="space-y-8">
+            {/* Emissions Summary Cards */}
+            <EmissionsSummaryCards
+              totalEmissions={0}
+              scope1Emissions={0}
+              scope2Emissions={0}
+            />
+
             {/* Essential Info Section */}
             <section className="bg-card rounded-2xl border border-border p-6 md:p-8">
               <div className="flex items-center gap-3 mb-6">
