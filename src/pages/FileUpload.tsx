@@ -225,27 +225,17 @@ const FileUpload = () => {
               </div>
             )}
 
-            {/* Help Section */}
-            <div className="mt-8 p-4 rounded-lg bg-accent/50 border border-border">
-              <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-primary mt-0.5" />
-                <div>
-                  <p className="font-medium text-foreground">File Requirements</p>
-                  <ul className="text-sm text-muted-foreground mt-2 space-y-1">
-                    <li>• Supported formats: Excel (.xlsx, .xls) or CSV</li>
-                    <li>• Maximum file size: 10MB</li>
-                  </ul>
-                  <p className="font-medium text-foreground mt-4">Required Sheets</p>
-                  <ul className="text-sm text-muted-foreground mt-2 space-y-1">
-                    <li>• <strong>Electricity</strong> – Columns: Date, Site, Usage</li>
-                    <li>• <strong>Gas</strong> – Columns: Date, Site, Usage</li>
-                    <li>• <strong>Flights</strong> – Columns: Date, Site, Activity-pkm</li>
-                    <li>• <strong>Water</strong> – Columns: Date, Site, Usage</li>
-                    <li>• <strong>Waste</strong> – Columns: Date, Site, Usage</li>
-                    <li>• <strong>Fuel</strong> – Columns: Date, Site, Usage</li>
-                  </ul>
-                </div>
+            {/* File Requirements Section */}
+            <div className="mt-8 p-6 rounded-2xl bg-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2 mb-3">
+                <Info className="w-5 h-5 text-primary" />
+                <p className="font-semibold text-primary">File Requirements:</p>
               </div>
+              <ul className="text-sm text-primary space-y-2 ml-7">
+                <li className="list-disc">Excel file (.xlsx or .xls) or CSV format</li>
+                <li className="list-disc">Must contain sheets: Electricity, Gas, Flights, Water, Waste, Fuel</li>
+                <li className="list-disc">Each sheet should have columns: Date, Site, Usage (or Activity-pkm for Flights)</li>
+              </ul>
             </div>
           </div>
         </div>
