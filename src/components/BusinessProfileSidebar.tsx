@@ -18,7 +18,7 @@ const BusinessProfileSidebar = ({
   const hasAnyData = companyName || abn || contactEmail || industry || sites;
 
   return (
-    <aside className="bg-card rounded-2xl border border-border p-6 h-fit sticky top-28 min-h-[500px] min-w-[320px]">
+    <aside className="bg-card rounded-2xl border border-border p-6 h-fit lg:sticky lg:top-28 lg:min-h-[400px]">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
           <Building2 className="w-6 h-6 text-primary" />
