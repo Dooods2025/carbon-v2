@@ -122,7 +122,7 @@ const Reports = () => {
         </div>
 
         <Card className="shadow-lg">
-          <Tabs defaultValue="previous-reports" className="w-full">
+          <Tabs defaultValue="full-report" className="w-full">
             <div className="border-b">
               <TabsList className="h-12 w-full justify-start rounded-none bg-transparent p-0">
                 <TabsTrigger
