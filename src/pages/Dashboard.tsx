@@ -42,49 +42,6 @@ import {
 } from "@/components/ui/table";
 
 const Dashboard = () => {
-  // Stats data
-  const stats = [
-    {
-      title: "Total Emissions",
-      value: "224.16",
-      unit: "t",
-      subtext: "CO2e",
-      icon: Cloud,
-      gradient: "from-blue-500 to-blue-600",
-      iconBg: "bg-blue-500/10",
-      iconColor: "text-blue-500",
-    },
-    {
-      title: "Scope 1",
-      value: "85.42",
-      unit: "t",
-      subtext: "Direct",
-      icon: Flame,
-      gradient: "from-orange-500 to-orange-600",
-      iconBg: "bg-orange-500/10",
-      iconColor: "text-orange-500",
-    },
-    {
-      title: "Scope 2",
-      value: "98.32",
-      unit: "t",
-      subtext: "Indirect",
-      icon: Zap,
-      gradient: "from-primary to-primary/80",
-      iconBg: "bg-primary/10",
-      iconColor: "text-primary",
-    },
-    {
-      title: "Scope 3",
-      value: "40.42",
-      unit: "t",
-      subtext: "Value Chain",
-      icon: Building2,
-      gradient: "from-purple-500 to-purple-600",
-      iconBg: "bg-purple-500/10",
-      iconColor: "text-purple-500",
-    },
-  ];
 
   // Category data for bar chart
   const categoryData = [
@@ -119,7 +76,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <AppHeader />
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 pt-24">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
@@ -144,39 +101,87 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - Original Style */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat, index) => {
-            const IconComponent = stat.icon;
-            return (
-              <Card 
-                key={index} 
-                className="relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer"
-              >
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        {stat.title}
-                      </p>
-                      <p className="text-3xl font-bold mt-1 text-foreground">
-                        {stat.value}
-                        <span className="text-lg font-normal ml-1">{stat.unit}</span>
-                      </p>
-                      <p className={`text-sm mt-1 ${stat.iconColor}`}>
-                        {stat.subtext}
-                      </p>
-                    </div>
-                    <div className={`w-12 h-12 rounded-xl ${stat.iconBg} flex items-center justify-center`}>
-                      <IconComponent className={`h-6 w-6 ${stat.iconColor}`} />
-                    </div>
-                  </div>
-                </CardContent>
-                {/* Gradient accent line */}
-                <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${stat.gradient}`} />
-              </Card>
-            );
-          })}
+          {/* Total Emissions - Green filled card */}
+          <div className="bg-primary text-primary-foreground rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium opacity-90">Total Emissions</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-3xl font-bold">224.16</span>
+                  <span className="text-lg font-medium">t CO2e</span>
+                </div>
+                <div className="flex items-center gap-1 mt-2 text-sm opacity-90">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>+5.2% vs last quarter</span>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center">
+                <ArrowUp className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Scope 1 - White card */}
+          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Scope 1</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-3xl font-bold text-foreground">85.42</span>
+                  <span className="text-lg font-medium text-primary">t CO2e</span>
+                </div>
+                <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
+                  <TrendingDown className="h-4 w-4" />
+                  <span>-2.1% Direct emissions</span>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                <ArrowUp className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
+
+          {/* Scope 2 - White card */}
+          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Scope 2</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-3xl font-bold text-foreground">98.32</span>
+                  <span className="text-lg font-medium text-primary">t CO2e</span>
+                </div>
+                <div className="flex items-center gap-1 mt-2 text-sm text-red-500">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>+8.4% Indirect emissions</span>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                <ArrowUp className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
+
+          {/* Scope 3 - White card */}
+          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Scope 3</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-3xl font-bold text-foreground">40.42</span>
+                  <span className="text-lg font-medium text-primary">t CO2e</span>
+                </div>
+                <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
+                  <TrendingDown className="h-4 w-4" />
+                  <span>Value chain emissions</span>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                <ArrowUp className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Charts Row */}

@@ -7,10 +7,10 @@ const AppHeader = () => {
   const location = useLocation();
 
   const navItems = [
-    { label: "Dashboard", path: "/dashboard" },
-    { label: "Reports", path: "/reports" },
-    { label: "Upload", path: "/file-upload" },
     { label: "Profile", path: "/upload" },
+    { label: "Upload", path: "/file-upload" },
+    { label: "Reports", path: "/reports" },
+    { label: "Dashboard", path: "/dashboard" },
   ];
 
   return (
