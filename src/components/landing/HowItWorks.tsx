@@ -5,7 +5,7 @@ const steps = [
     icon: UserPlus,
     step: "01",
     title: "Create Your Account",
-    description: "Sign up in seconds and set up your profile. Tell us about your lifestyle or business to get started.",
+    description: "Sign up in seconds and set up your profile. Tell us about your business to get started.",
   },
   {
     icon: ClipboardList,
