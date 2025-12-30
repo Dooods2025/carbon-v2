@@ -156,12 +156,42 @@ const Upload = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Load existing profile from Supabase
+  // Load existing profile from Supabase or create from pending signup data
   useEffect(() => {
     const loadProfile = async () => {
       if (!user) return;
 
       try {
+        // First, check if there's pending profile data from signup
+        const pendingProfileStr = localStorage.getItem('pendingProfile');
+        if (pendingProfileStr) {
+          const pendingProfile = JSON.parse(pendingProfileStr);
+
+          // Try to create the profile
+          const { error: insertError } = await supabase
+            .from("business_profiles")
+            .upsert({
+              user_id: user.id,
+              company_name: pendingProfile.company_name,
+              abn: pendingProfile.abn,
+              contact_email: pendingProfile.contact_email,
+              industry: pendingProfile.industry,
+              num_sites: pendingProfile.num_sites,
+            }, { onConflict: 'user_id' });
+
+          if (!insertError) {
+            // Clear the pending data
+            localStorage.removeItem('pendingProfile');
+            toast({
+              title: "Profile created!",
+              description: "Your business profile has been saved.",
+            });
+          } else {
+            console.error("Error saving pending profile:", insertError);
+          }
+        }
+
+        // Now load the profile
         const { data, error } = await supabase
           .from("business_profiles")
           .select("*")

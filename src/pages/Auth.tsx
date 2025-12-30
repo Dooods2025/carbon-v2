@@ -140,6 +140,15 @@ const Auth = () => {
           }
         }
 
+        // Store signup data in localStorage to be saved after email verification
+        localStorage.setItem('pendingProfile', JSON.stringify({
+          company_name: businessName,
+          abn: abn,
+          contact_email: contactEmail,
+          industry: industry,
+          num_sites: parseInt(numberOfSites) || 1,
+        }));
+
         toast({
           title: "Account created!",
           description: "Please check your email to verify your account.",
