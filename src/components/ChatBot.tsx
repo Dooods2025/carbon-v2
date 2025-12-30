@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+
+// n8n webhook URL for the chatbot
+const N8N_CHAT_WEBHOOK = "https://dgledhill.app.n8n.cloud/webhook/carbon-chat";
 
 interface Message {
   id: string;
@@ -13,11 +17,12 @@ interface Message {
 }
 
 const ChatBot = () => {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
-      content: "Hello! I'm your carbon footprint assistant. How can I help you today?",
+      content: "Hello! I'm your carbon footprint assistant. Ask me about reducing emissions, understanding your carbon data, or sustainability tips!",
       role: "assistant",
       timestamp: new Date(),
     },
@@ -46,18 +51,43 @@ const ChatBot = () => {
     setInput("");
     setIsLoading(true);
 
-    // TODO: Connect to n8n workflow
-    // For now, simulate a response
-    setTimeout(() => {
+    try {
+      const response = await fetch(N8N_CHAT_WEBHOOK, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: input.trim(),
+          user_id: user?.id || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get response");
+      }
+
+      const data = await response.json();
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "This chatbot will be connected to an n8n workflow soon. For now, I'm just a placeholder response!",
+        content: data.response || "Sorry, I couldn't process that request. Please try again.",
         role: "assistant",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error("Chat error:", error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Sorry, I'm having trouble connecting right now. Please try again later.",
+        role: "assistant",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
