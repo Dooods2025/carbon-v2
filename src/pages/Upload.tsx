@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles, Loader2, ArrowRight, Upload as UploadIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import AppHeader from "@/components/AppHeader";
 import BusinessProfileSidebar from "@/components/BusinessProfileSidebar";
 import EmissionsSummaryCards from "@/components/EmissionsSummaryCards";
+import { useAuth } from "@/hooks/useAuth";
+import { useEmissions } from "@/hooks/useEmissions";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
 interface BusinessProfile {
   // Essential Info
@@ -45,6 +50,12 @@ const industries = [
   "Education",
   "Construction",
   "Technology",
+  "Agriculture",
+  "Energy & Utilities",
+  "Financial Services",
+  "Information Technology",
+  "Mining & Resources",
+  "Transport & Logistics",
   "Other",
 ];
 
@@ -113,6 +124,13 @@ const budgetOptions = [
 ];
 
 const Upload = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { latestEmissions } = useEmissions(user?.id);
+  const { toast } = useToast();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [profile, setProfile] = useState<BusinessProfile>({
     companyName: "",
     abn: "",
@@ -131,10 +149,71 @@ const Upload = () => {
     budgetAppetite: "",
   });
 
-  const handleEditProfile = () => {
-    // Scroll to essential info section
-    document.getElementById("essential-info")?.scrollIntoView({ behavior: "smooth" });
-  };
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  // Load existing profile from Supabase
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("business_profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error && error.code !== "PGRST116") {
+          // PGRST116 = no rows returned
+          console.error("Error loading profile:", error);
+          return;
+        }
+
+        if (data) {
+          // Parse initiatives from string if needed
+          let initiatives: string[] = [];
+          if (data.sustainability_initiatives) {
+            try {
+              initiatives = JSON.parse(data.sustainability_initiatives);
+            } catch {
+              initiatives = data.sustainability_initiatives.split(",").map((s: string) => s.trim());
+            }
+          }
+
+          setProfile({
+            companyName: data.company_name || "",
+            abn: data.abn || "",
+            contactEmail: data.contact_email || "",
+            industry: data.industry || "",
+            employees: data.num_employees?.toString() || "",
+            sites: data.num_sites?.toString() || "",
+            businessType: data.business_type || "",
+            buildingType: data.building_type || "",
+            operatingHours: data.operating_hours || "",
+            energySources: data.energy_sources || "",
+            fleetSize: data.fleet_size || "",
+            fleetType: data.fleet_type || "",
+            initiatives: initiatives,
+            target: data.sustainability_goal || "",
+            budgetAppetite: data.budget_appetite || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error loading profile:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      loadProfile();
+    }
+  }, [user]);
 
   const handleChange = (field: keyof BusinessProfile, value: string | string[]) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -150,10 +229,104 @@ const Upload = () => {
     });
   };
 
-  const handleSaveProfile = () => {
-    console.log("Saving profile:", profile);
-    // TODO: Save to backend
+  const handleSaveProfile = async () => {
+    if (!user) {
+      toast({
+        title: "Not logged in",
+        description: "Please log in to save your profile.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // Check if profile exists
+      const { data: existing } = await supabase
+        .from("business_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      const profileData = {
+        user_id: user.id,
+        company_name: profile.companyName,
+        abn: profile.abn,
+        contact_email: profile.contactEmail,
+        industry: profile.industry,
+        num_employees: profile.employees ? parseInt(profile.employees) : null,
+        num_sites: profile.sites ? parseInt(profile.sites) : null,
+        business_type: profile.businessType,
+        building_type: profile.buildingType,
+        operating_hours: profile.operatingHours,
+        energy_sources: profile.energySources,
+        has_fleet: profile.fleetSize !== "No vehicles" && profile.fleetSize !== "",
+        fleet_size: profile.fleetSize,
+        fleet_type: profile.fleetType,
+        sustainability_initiatives: JSON.stringify(profile.initiatives),
+        sustainability_goal: profile.target,
+        budget_appetite: profile.budgetAppetite,
+        updated_at: new Date().toISOString(),
+      };
+
+      let error;
+
+      if (existing) {
+        // Update existing profile
+        const result = await supabase
+          .from("business_profiles")
+          .update(profileData)
+          .eq("user_id", user.id);
+        error = result.error;
+      } else {
+        // Insert new profile
+        const result = await supabase
+          .from("business_profiles")
+          .insert(profileData);
+        error = result.error;
+      }
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Profile saved!",
+        description: "Your business profile has been updated.",
+      });
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      toast({
+        title: "Error saving profile",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const handleContinueToUpload = async () => {
+    // Save profile first, then navigate
+    await handleSaveProfile();
+    navigate("/file-upload");
+  };
+
+  // Show loading state
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <AppHeader />
+        <main className="container mx-auto px-4 py-12 pt-28">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Loading profile...</span>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -176,9 +349,9 @@ const Upload = () => {
           <div className="order-1 lg:order-2 space-y-8">
             {/* Emissions Summary Cards */}
             <EmissionsSummaryCards
-              totalEmissions={0}
-              scope1Emissions={0}
-              scope2Emissions={0}
+              totalEmissions={latestEmissions?.total_emissions ?? 0}
+              scope1Emissions={latestEmissions?.scope1_total ?? 0}
+              scope2Emissions={latestEmissions?.scope2_total ?? 0}
             />
 
             {/* Essential Info Section */}
@@ -521,7 +694,7 @@ const Upload = () => {
                       Generate Insights
                     </h3>
                     <p className="text-sm text-muted-foreground max-w-md mb-4">
-                      Complete your business profile and upload emissions data to receive 
+                      Complete your business profile and upload emissions data to receive
                       personalised recommendations for reducing your carbon footprint.
                     </p>
                     <Button className="gradient-primary">
@@ -563,21 +736,31 @@ const Upload = () => {
               </div>
             </section>
 
-            {/* Save & Edit Buttons */}
-            <div className="flex justify-end gap-3">
-              <Button
-                onClick={handleEditProfile}
-                variant="outline"
-                className="px-8 h-12"
-              >
-                <Pencil className="w-4 h-4 mr-2" />
-                Edit Profile
-              </Button>
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row justify-end gap-3">
               <Button
                 onClick={handleSaveProfile}
-                className="gradient-primary text-primary-foreground px-8 h-12"
+                variant="outline"
+                className="px-8 h-12"
+                disabled={isSaving}
               >
-                Save Profile
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Profile"
+                )}
+              </Button>
+              <Button
+                onClick={handleContinueToUpload}
+                className="gradient-primary text-primary-foreground px-8 h-12"
+                disabled={isSaving}
+              >
+                <UploadIcon className="w-4 h-4 mr-2" />
+                Continue to Upload Data
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </div>
