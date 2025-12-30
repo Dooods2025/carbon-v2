@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles, Loader2, ArrowRight, Upload as UploadIcon } from "lucide-react";
+import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles, Loader2, ArrowRight, Upload as UploadIcon, ImagePlus, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,14 @@ import { useEmissions } from "@/hooks/useEmissions";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
+interface Recommendation {
+  title: string;
+  description: string;
+  potentialSavings: string;
+  priority: 'high' | 'medium' | 'low';
+  category: string;
+}
+
 interface BusinessProfile {
   // Essential Info
   companyName: string;
@@ -29,6 +37,7 @@ interface BusinessProfile {
   employees: string;
   sites: string;
   businessType: string;
+  logoUrl: string;
   // Operational Details
   buildingType: string;
   operatingHours: string;
@@ -126,11 +135,16 @@ const budgetOptions = [
 const Upload = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { latestEmissions } = useEmissions(user?.id);
+  const { latestEmissions, getCategoryData } = useEmissions(user?.id);
   const { toast } = useToast();
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>("");
   const [profile, setProfile] = useState<BusinessProfile>({
     companyName: "",
     abn: "",
@@ -139,6 +153,7 @@ const Upload = () => {
     employees: "",
     sites: "",
     businessType: "",
+    logoUrl: "",
     buildingType: "",
     operatingHours: "",
     energySources: "",
@@ -257,6 +272,131 @@ const Upload = () => {
       }
       return { ...prev, initiatives: [...current, initiative] };
     });
+  };
+
+  // Logo upload handler
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({
+          title: "File too large",
+          description: "Logo must be less than 2MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeLogo = () => {
+    setLogoFile(null);
+    setLogoPreview("");
+    setProfile(prev => ({ ...prev, logoUrl: "" }));
+    if (logoInputRef.current) {
+      logoInputRef.current.value = "";
+    }
+  };
+
+  // Generate insights based on profile and emissions data
+  const generateInsights = () => {
+    setIsGeneratingInsights(true);
+
+    // Simulate AI processing delay
+    setTimeout(() => {
+      const newRecommendations: Recommendation[] = [];
+
+      // Get emissions data
+      const categoryData = getCategoryData();
+      const topEmitter = categoryData.length > 0
+        ? categoryData.reduce((prev, current) => prev.value > current.value ? prev : current)
+        : null;
+
+      // Electricity-based recommendations
+      if (topEmitter?.name === 'Electricity' || profile.energySources === 'Grid electricity only') {
+        newRecommendations.push({
+          title: "Switch to Renewable Energy",
+          description: "Consider switching to a green energy provider or installing solar panels. Your electricity is your highest emission source.",
+          potentialSavings: `Up to ${((latestEmissions?.electricity_emissions ?? 50) * 0.8).toFixed(1)}t CO2e/year`,
+          priority: 'high',
+          category: 'energy',
+        });
+      }
+
+      // Building-based recommendations
+      if (profile.buildingType === 'Leased' || profile.operatingHours === '24/7 operations') {
+        newRecommendations.push({
+          title: "Optimize HVAC Schedule",
+          description: "Implement smart building controls to reduce heating and cooling outside of peak hours.",
+          potentialSavings: "15-25% reduction in energy use",
+          priority: 'medium',
+          category: 'operations',
+        });
+      }
+
+      // Fleet-based recommendations
+      if (profile.fleetSize && profile.fleetSize !== "No vehicles" && profile.fleetType !== 'Electric') {
+        newRecommendations.push({
+          title: "Transition Fleet to EVs",
+          description: `Consider transitioning your ${profile.fleetSize.toLowerCase()} to electric vehicles to reduce Scope 1 emissions.`,
+          potentialSavings: `Up to ${((latestEmissions?.fuel_emissions ?? 20) * 0.9).toFixed(1)}t CO2e/year`,
+          priority: profile.fleetSize.includes('Large') ? 'high' : 'medium',
+          category: 'transport',
+        });
+      }
+
+      // No sustainability initiatives
+      if (profile.initiatives.includes('None yet') || profile.initiatives.length === 0) {
+        newRecommendations.push({
+          title: "Start a Recycling Program",
+          description: "Implement comprehensive recycling across all sites to reduce waste-to-landfill emissions.",
+          potentialSavings: `${((latestEmissions?.waste_emissions ?? 10) * 0.5).toFixed(1)}t CO2e/year`,
+          priority: 'low',
+          category: 'waste',
+        });
+      }
+
+      // LED lighting for all
+      newRecommendations.push({
+        title: "LED Lighting Upgrade",
+        description: "Replace all lighting with energy-efficient LED alternatives for immediate energy savings.",
+        potentialSavings: "10-20% electricity reduction",
+        priority: 'medium',
+        category: 'energy',
+      });
+
+      // Budget-based recommendations
+      if (profile.budgetAppetite === 'Looking for no-cost changes only') {
+        newRecommendations.push({
+          title: "Employee Awareness Campaign",
+          description: "Launch a sustainability awareness program to encourage energy-saving behaviors at no cost.",
+          potentialSavings: "5-10% overall reduction",
+          priority: 'low',
+          category: 'culture',
+        });
+      }
+
+      // Water-based recommendations if water emissions exist
+      if ((latestEmissions?.water_emissions ?? 0) > 0) {
+        newRecommendations.push({
+          title: "Water Efficiency Measures",
+          description: "Install water-efficient fixtures and implement rainwater harvesting systems.",
+          potentialSavings: `${((latestEmissions?.water_emissions ?? 5) * 0.3).toFixed(1)}t CO2e/year`,
+          priority: 'low',
+          category: 'water',
+        });
+      }
+
+      setRecommendations(newRecommendations.slice(0, 5)); // Limit to 5 recommendations
+      setIsGeneratingInsights(false);
+
+      toast({
+        title: "Insights Generated!",
+        description: `${newRecommendations.length} recommendations tailored to your business.`,
+      });
+    }, 1500);
   };
 
   const handleSaveProfile = async () => {
@@ -419,6 +559,61 @@ const Upload = () => {
                     onChange={(e) => handleChange("abn", e.target.value)}
                     className="h-12"
                   />
+                </div>
+
+                {/* Company Logo Upload */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <ImagePlus className="w-4 h-4" />
+                    Company Logo
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    {/* Logo Preview */}
+                    {(logoPreview || profile.logoUrl) ? (
+                      <div className="relative">
+                        <div className="w-20 h-20 rounded-lg border-2 border-primary/20 overflow-hidden bg-muted flex items-center justify-center">
+                          <img
+                            src={logoPreview || profile.logoUrl}
+                            alt="Company logo"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={removeLogo}
+                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                        <ImagePlus className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/svg+xml"
+                        onChange={handleLogoSelect}
+                        className="hidden"
+                        id="logo-upload"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => logoInputRef.current?.click()}
+                        className="w-full h-12"
+                      >
+                        <UploadIcon className="w-4 h-4 mr-2" />
+                        {(logoPreview || profile.logoUrl) ? "Change Logo" : "Upload Logo"}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        PNG, JPG or SVG (max 2MB)
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="md:col-span-2 space-y-2">
@@ -714,55 +909,108 @@ const Upload = () => {
               </div>
 
               <div className="space-y-4">
-                {/* Placeholder for insights */}
-                <div className="bg-muted/30 rounded-xl p-6 border border-dashed border-border">
-                  <div className="flex flex-col items-center justify-center text-center py-8">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                      <Sparkles className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Generate Insights
-                    </h3>
-                    <p className="text-sm text-muted-foreground max-w-md mb-4">
-                      Complete your business profile and upload emissions data to receive
-                      personalised recommendations for reducing your carbon footprint.
-                    </p>
-                    <Button className="gradient-primary">
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Generate Recommendations
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Sample insight cards (will be populated with real data) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-50">
-                  <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-800 flex items-center justify-center shrink-0">
-                        <Lightbulb className="w-4 h-4 text-green-600 dark:text-green-400" />
+                {recommendations.length === 0 ? (
+                  /* Generate button when no recommendations */
+                  <div className="bg-muted/30 rounded-xl p-6 border border-dashed border-border">
+                    <div className="flex flex-col items-center justify-center text-center py-8">
+                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                        <Sparkles className="w-8 h-8 text-primary" />
                       </div>
-                      <div>
-                        <h4 className="font-medium text-foreground">Switch to LED Lighting</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Potential savings: 2.5t CO2e/year
-                        </p>
-                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                        Generate Insights
+                      </h3>
+                      <p className="text-sm text-muted-foreground max-w-md mb-4">
+                        Complete your business profile and upload emissions data to receive
+                        personalised recommendations for reducing your carbon footprint.
+                      </p>
+                      <Button
+                        className="gradient-primary"
+                        onClick={generateInsights}
+                        disabled={isGeneratingInsights}
+                      >
+                        {isGeneratingInsights ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Generate Recommendations
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-800 flex items-center justify-center shrink-0">
-                        <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-foreground">Optimize HVAC Schedule</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Potential savings: 4.2t CO2e/year
-                        </p>
-                      </div>
+                ) : (
+                  /* Display recommendations */
+                  <>
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-muted-foreground">
+                        {recommendations.length} recommendations based on your profile
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={generateInsights}
+                        disabled={isGeneratingInsights}
+                      >
+                        {isGeneratingInsights ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Refresh
+                          </>
+                        )}
+                      </Button>
                     </div>
-                  </div>
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {recommendations.map((rec, index) => {
+                        const priorityColors = {
+                          high: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                          medium: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
+                          low: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+                        };
+                        const priorityIconColors = {
+                          high: 'bg-red-100 dark:bg-red-800 text-red-600 dark:text-red-400',
+                          medium: 'bg-amber-100 dark:bg-amber-800 text-amber-600 dark:text-amber-400',
+                          low: 'bg-green-100 dark:bg-green-800 text-green-600 dark:text-green-400',
+                        };
+                        return (
+                          <div
+                            key={index}
+                            className={`rounded-xl p-4 border ${priorityColors[rec.priority]}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${priorityIconColors[rec.priority]}`}>
+                                <Lightbulb className="w-4 h-4" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium text-foreground">{rec.title}</h4>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
+                                    rec.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                                    rec.priority === 'medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' :
+                                    'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                  }`}>
+                                    {rec.priority}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {rec.description}
+                                </p>
+                                <p className="text-sm font-medium text-primary mt-2">
+                                  Potential savings: {rec.potentialSavings}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             </section>
 

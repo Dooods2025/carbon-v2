@@ -1,7 +1,15 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { CloudUpload, FileSpreadsheet, X, CheckCircle2, AlertCircle, Info, Loader2 } from "lucide-react";
+import { CloudUpload, FileSpreadsheet, X, CheckCircle2, AlertCircle, Info, Loader2, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import AppHeader from "@/components/AppHeader";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,16 +38,29 @@ interface EmissionsResult {
   site_breakdown?: Record<string, number>;
 }
 
+// Generate financial year options (current year back to 2018)
+const getFinancialYearOptions = () => {
+  const currentYear = new Date().getFullYear();
+  const options = [];
+  for (let year = currentYear; year >= 2018; year--) {
+    options.push(`${year - 1}-${year}`);
+  }
+  return options;
+};
+
 const FileUpload = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [processingStep, setProcessingStep] = useState("");
+  const [reportingPeriod, setReportingPeriod] = useState<string>("");
 
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const financialYears = getFinancialYearOptions();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -131,6 +152,13 @@ const FileUpload = () => {
       formData.append("file", file);
       formData.append("user_id", user.id);
       formData.append("filename", file.name);
+      if (reportingPeriod) {
+        formData.append("reporting_period", reportingPeriod);
+        // Parse financial year to dates (e.g., "2023-2024" -> July 1, 2023 to June 30, 2024)
+        const [startYear, endYear] = reportingPeriod.split("-").map(Number);
+        formData.append("period_start", `${startYear}-07-01`);
+        formData.append("period_end", `${endYear}-06-30`);
+      }
 
       // Send file to n8n webhook
       setStatus("processing");
@@ -157,6 +185,22 @@ const FileUpload = () => {
       setStatus("saving");
       setProcessingStep("Saving results to database...");
 
+      // Use selected reporting period if n8n doesn't return one
+      let periodStart = result.period_start ?? null;
+      let periodEnd = result.period_end ?? null;
+      let reportPeriodLabel = result.report_period ?? null;
+
+      if (reportingPeriod && !reportPeriodLabel) {
+        reportPeriodLabel = `FY ${reportingPeriod}`;
+        const [startYear, endYear] = reportingPeriod.split("-").map(Number);
+        periodStart = `${startYear}-07-01`;
+        periodEnd = `${endYear}-06-30`;
+      }
+
+      if (!reportPeriodLabel) {
+        reportPeriodLabel = `Upload ${new Date().toLocaleDateString()}`;
+      }
+
       const { error: saveError } = await supabase
         .from("emissions_data")
         .insert({
@@ -171,9 +215,9 @@ const FileUpload = () => {
           scope2_total: result.scope2_total ?? 0,
           scope3_total: result.scope3_total ?? 0,
           total_emissions: result.total_emissions ?? 0,
-          report_period: result.report_period ?? `Upload ${new Date().toLocaleDateString()}`,
-          period_start: result.period_start ?? null,
-          period_end: result.period_end ?? null,
+          report_period: reportPeriodLabel,
+          period_start: periodStart,
+          period_end: periodEnd,
           site_breakdown: result.site_breakdown ?? null,
           source_file: file.name,
         });
@@ -315,6 +359,29 @@ const FileUpload = () => {
               )}
             </div>
 
+            {/* Reporting Period Selection */}
+            <div className="mt-6 p-4 rounded-xl bg-muted/30 border border-border">
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar className="w-5 h-5 text-primary" />
+                <Label className="font-medium text-foreground">Reporting Period</Label>
+              </div>
+              <Select value={reportingPeriod} onValueChange={setReportingPeriod}>
+                <SelectTrigger className="w-full h-12">
+                  <SelectValue placeholder="Select financial year (e.g., 2023-2024)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {financialYears.map((year) => (
+                    <SelectItem key={year} value={year}>
+                      FY {year} (1 Jul {year.split("-")[0]} - 30 Jun {year.split("-")[1]})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-2">
+                Australian financial year runs from 1 July to 30 June
+              </p>
+            </div>
+
             {/* Upload Button */}
             <div className="mt-6">
               <Button
@@ -394,8 +461,18 @@ const FileUpload = () => {
               </div>
               <ul className="text-sm text-primary space-y-2 ml-7">
                 <li className="list-disc">Excel file (.xlsx or .xls) or CSV format</li>
-                <li className="list-disc">Must contain sheets: Electricity, Gas, Fuel, Flights, Water, Waste</li>
-                <li className="list-disc">Each sheet should have columns: Date, Site, Usage (or Activity-pkm for Flights)</li>
+                <li className="list-disc">Must contain sheets for emission categories:
+                  <ul className="ml-4 mt-1 space-y-1">
+                    <li>• <strong>Electricity</strong> - kWh consumption</li>
+                    <li>• <strong>Gas</strong> - MJ or GJ consumption</li>
+                    <li>• <strong>Fuel</strong> - Litres (petrol, diesel, LPG)</li>
+                    <li>• <strong>Flights</strong> - Distance in km or passenger-km</li>
+                    <li>• <strong>Water</strong> - kL consumption</li>
+                    <li>• <strong>Waste</strong> - Tonnes sent to landfill</li>
+                  </ul>
+                </li>
+                <li className="list-disc">Each sheet should have columns: Date, Site, Usage/Quantity</li>
+                <li className="list-disc">NGERS emission factors are applied automatically</li>
               </ul>
             </div>
           </div>

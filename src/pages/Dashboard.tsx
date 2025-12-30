@@ -82,6 +82,20 @@ const DEMO_SCOPE_DATA = {
 };
 
 const DEMO_YEARLY_DATA: Record<string, { total: number; scope1: number; scope2: number; scope3: number; categories: { name: string; emissions: number }[] }> = {
+  "2025": {
+    total: 232.50,
+    scope1: 88.20,
+    scope2: 102.15,
+    scope3: 42.15,
+    categories: [
+      { name: "Electricity", emissions: 102.15 },
+      { name: "Gas", emissions: 54.32 },
+      { name: "Flights", emissions: 29.80 },
+      { name: "Water", emissions: 9.25 },
+      { name: "Waste", emissions: 19.48 },
+      { name: "Fuel", emissions: 17.50 },
+    ],
+  },
   "2024": {
     total: 224.16,
     scope1: 85.42,
@@ -136,6 +150,48 @@ const DEMO_YEARLY_DATA: Record<string, { total: number; scope1: number; scope2: 
       { name: "Water", emissions: 7.85 },
       { name: "Waste", emissions: 16.20 },
       { name: "Fuel", emissions: 15.82 },
+    ],
+  },
+  "2020": {
+    total: 172.18,
+    scope1: 74.32,
+    scope2: 75.86,
+    scope3: 22.00,
+    categories: [
+      { name: "Electricity", emissions: 78.45 },
+      { name: "Gas", emissions: 44.18 },
+      { name: "Flights", emissions: 12.50 },
+      { name: "Water", emissions: 7.25 },
+      { name: "Waste", emissions: 15.30 },
+      { name: "Fuel", emissions: 14.50 },
+    ],
+  },
+  "2019": {
+    total: 195.82,
+    scope1: 80.15,
+    scope2: 82.67,
+    scope3: 33.00,
+    categories: [
+      { name: "Electricity", emissions: 85.32 },
+      { name: "Gas", emissions: 48.15 },
+      { name: "Flights", emissions: 24.80 },
+      { name: "Water", emissions: 8.05 },
+      { name: "Waste", emissions: 17.00 },
+      { name: "Fuel", emissions: 12.50 },
+    ],
+  },
+  "2018": {
+    total: 188.45,
+    scope1: 77.82,
+    scope2: 79.63,
+    scope3: 31.00,
+    categories: [
+      { name: "Electricity", emissions: 82.15 },
+      { name: "Gas", emissions: 46.50 },
+      { name: "Flights", emissions: 23.20 },
+      { name: "Water", emissions: 7.80 },
+      { name: "Waste", emissions: 16.30 },
+      { name: "Fuel", emissions: 12.50 },
     ],
   },
 };
@@ -317,7 +373,7 @@ const Dashboard = () => {
       };
     });
 
-    ['2024', '2023', '2022', '2021'].forEach(year => {
+    ['2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018'].forEach(year => {
       if (!converted[year]) {
         converted[year] = DEMO_YEARLY_DATA[year];
       }
@@ -744,10 +800,14 @@ const Dashboard = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="2025">2025</SelectItem>
                       <SelectItem value="2024">2024</SelectItem>
                       <SelectItem value="2023">2023</SelectItem>
                       <SelectItem value="2022">2022</SelectItem>
                       <SelectItem value="2021">2021</SelectItem>
+                      <SelectItem value="2020">2020</SelectItem>
+                      <SelectItem value="2019">2019</SelectItem>
+                      <SelectItem value="2018">2018</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -757,10 +817,14 @@ const Dashboard = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="2025">2025</SelectItem>
                     <SelectItem value="2024">2024</SelectItem>
                     <SelectItem value="2023">2023</SelectItem>
                     <SelectItem value="2022">2022</SelectItem>
                     <SelectItem value="2021">2021</SelectItem>
+                    <SelectItem value="2020">2020</SelectItem>
+                    <SelectItem value="2019">2019</SelectItem>
+                    <SelectItem value="2018">2018</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
