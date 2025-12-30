@@ -1,16 +1,45 @@
 import { useState, useCallback } from "react";
-import { CloudUpload, FileSpreadsheet, X, CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { CloudUpload, FileSpreadsheet, X, CheckCircle2, AlertCircle, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import AppHeader from "@/components/AppHeader";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
-type UploadStatus = "idle" | "uploading" | "success" | "error";
+// n8n webhook URL for carbon calculator
+const N8N_CALCULATOR_WEBHOOK = "https://dgledhill.app.n8n.cloud/webhook/50b6281b-c102-4135-90e4-c81d725e6f7f";
+
+type UploadStatus = "idle" | "uploading" | "processing" | "saving" | "success" | "error";
+
+interface EmissionsResult {
+  electricity_emissions?: number;
+  gas_emissions?: number;
+  fuel_emissions?: number;
+  flights_emissions?: number;
+  water_emissions?: number;
+  waste_emissions?: number;
+  scope1_total?: number;
+  scope2_total?: number;
+  scope3_total?: number;
+  total_emissions?: number;
+  report_period?: string;
+  period_start?: string;
+  period_end?: string;
+  site_breakdown?: Record<string, number>;
+}
 
 const FileUpload = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [processingStep, setProcessingStep] = useState("");
+
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -81,19 +110,120 @@ const FileUpload = () => {
   const handleUpload = async () => {
     if (!file) return;
 
-    setStatus("uploading");
+    // Check if user is logged in
+    if (!user) {
+      setErrorMessage("Please log in to upload files.");
+      setStatus("error");
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to upload and process emissions data.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // Simulate upload process
-    setTimeout(() => {
-      const success = Math.random() > 0.2;
-      if (success) {
-        setStatus("success");
-      } else {
-        setStatus("error");
-        setErrorMessage("Failed to process file. Please check the format and try again.");
+    setStatus("uploading");
+    setProcessingStep("Uploading file to calculator...");
+
+    try {
+      // Create FormData and append the file
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("user_id", user.id);
+      formData.append("filename", file.name);
+
+      // Send file to n8n webhook
+      setStatus("processing");
+      setProcessingStep("Calculating emissions...");
+
+      const response = await fetch(N8N_CALCULATOR_WEBHOOK, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Calculator returned error: ${response.status} ${response.statusText}`);
       }
-    }, 2000);
+
+      // Parse the response from n8n
+      const result: EmissionsResult = await response.json();
+
+      // Validate we got emissions data back
+      if (!result || typeof result.total_emissions === "undefined") {
+        throw new Error("Invalid response from calculator. Please check your file format.");
+      }
+
+      // Save results to Supabase
+      setStatus("saving");
+      setProcessingStep("Saving results to database...");
+
+      const { error: saveError } = await supabase
+        .from("emissions_data")
+        .insert({
+          user_id: user.id,
+          electricity_emissions: result.electricity_emissions ?? 0,
+          gas_emissions: result.gas_emissions ?? 0,
+          fuel_emissions: result.fuel_emissions ?? 0,
+          flights_emissions: result.flights_emissions ?? 0,
+          water_emissions: result.water_emissions ?? 0,
+          waste_emissions: result.waste_emissions ?? 0,
+          scope1_total: result.scope1_total ?? 0,
+          scope2_total: result.scope2_total ?? 0,
+          scope3_total: result.scope3_total ?? 0,
+          total_emissions: result.total_emissions ?? 0,
+          report_period: result.report_period ?? `Upload ${new Date().toLocaleDateString()}`,
+          period_start: result.period_start ?? null,
+          period_end: result.period_end ?? null,
+          site_breakdown: result.site_breakdown ?? null,
+          source_file: file.name,
+        });
+
+      if (saveError) {
+        console.error("Failed to save to Supabase:", saveError);
+        throw new Error("Failed to save results. Please try again.");
+      }
+
+      // Success!
+      setStatus("success");
+      setProcessingStep("");
+
+      toast({
+        title: "Emissions Calculated!",
+        description: `Total emissions: ${result.total_emissions?.toFixed(2)} t CO2e`,
+      });
+
+    } catch (error) {
+      console.error("Upload error:", error);
+      setStatus("error");
+      setProcessingStep("");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to process file. Please check the format and try again."
+      );
+
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    }
   };
+
+  const getStatusMessage = () => {
+    switch (status) {
+      case "uploading":
+        return "Uploading...";
+      case "processing":
+        return "Calculating emissions...";
+      case "saving":
+        return "Saving results...";
+      default:
+        return "Upload & Calculate Emissions";
+    }
+  };
+
+  const isProcessing = status === "uploading" || status === "processing" || status === "saving";
 
   return (
     <div className="min-h-screen bg-background">
@@ -126,14 +256,16 @@ const FileUpload = () => {
                 isDragging
                   ? "border-primary bg-primary/5 scale-[1.02]"
                   : "border-border hover:border-primary/50 hover:bg-accent/30",
-                file && "border-primary bg-primary/5"
+                file && "border-primary bg-primary/5",
+                isProcessing && "pointer-events-none opacity-75"
               )}
             >
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 onChange={handleFileSelect}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={isProcessing}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
               />
 
               {!file ? (
@@ -168,15 +300,17 @@ const FileUpload = () => {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeFile();
-                    }}
-                    className="w-8 h-8 rounded-full bg-muted hover:bg-destructive/10 flex items-center justify-center transition-colors group"
-                  >
-                    <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
-                  </button>
+                  {!isProcessing && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFile();
+                      }}
+                      className="w-8 h-8 rounded-full bg-muted hover:bg-destructive/10 flex items-center justify-center transition-colors group"
+                    >
+                      <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -185,13 +319,13 @@ const FileUpload = () => {
             <div className="mt-6">
               <Button
                 onClick={handleUpload}
-                disabled={!file || status === "uploading"}
+                disabled={!file || isProcessing}
                 className="w-full h-12 text-base font-medium"
               >
-                {status === "uploading" ? (
+                {isProcessing ? (
                   <span className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    Processing...
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {getStatusMessage()}
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
@@ -200,17 +334,31 @@ const FileUpload = () => {
                   </span>
                 )}
               </Button>
+
+              {/* Processing step indicator */}
+              {processingStep && (
+                <p className="text-sm text-center text-muted-foreground mt-2">
+                  {processingStep}
+                </p>
+              )}
             </div>
 
             {/* Status Messages */}
             {status === "success" && (
               <div className="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20 flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-primary mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <p className="font-medium text-foreground">Upload Successful!</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Your emissions data has been processed. View results in the Dashboard.
+                    Your emissions data has been calculated and saved.
                   </p>
+                  <Button
+                    variant="link"
+                    className="p-0 h-auto text-primary mt-2"
+                    onClick={() => navigate("/dashboard")}
+                  >
+                    View results in Dashboard →
+                  </Button>
                 </div>
               </div>
             )}
@@ -221,6 +369,19 @@ const FileUpload = () => {
                 <div>
                   <p className="font-medium text-foreground">Upload Failed</p>
                   <p className="text-sm text-muted-foreground mt-1">{errorMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Not logged in warning */}
+            {!user && (
+              <div className="mt-4 p-4 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950 dark:border-amber-800 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-800 dark:text-amber-200">Login Required</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    Please log in to upload and process emissions data.
+                  </p>
                 </div>
               </div>
             )}
