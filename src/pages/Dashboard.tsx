@@ -38,7 +38,10 @@ import {
   Download,
   Loader2,
   AlertCircle,
+  Target,
+  Calendar,
 } from "lucide-react";
+import { useScenarios } from "@/hooks/useScenarios";
 import {
   BarChart,
   Bar,
@@ -210,6 +213,10 @@ const Dashboard = () => {
     getCategoryData,
     getYearlyData,
   } = useEmissions(user?.id);
+
+  // Get scenarios data
+  const { scenarios, isLoading: scenariosLoading } = useScenarios(user?.id);
+  const activeScenario = scenarios.find(s => s.is_active) ?? scenarios[0];
 
   // Determine if we're using real data or demo data
   const hasRealData = !!latestEmissions;
@@ -995,6 +1002,83 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Active Scenario Section */}
+        {(activeScenario || scenarios.length > 0) && (
+          <Card className="shadow-md hover:shadow-lg transition-shadow mt-8">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  Reduction Scenarios
+                </CardTitle>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/reduction-planner">
+                    View All Scenarios
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {activeScenario ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Active Scenario</p>
+                      <p className="text-lg font-semibold text-foreground">{activeScenario.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Target Reduction</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {activeScenario.reduction_percentage?.toFixed(1) ?? 0}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Baseline</p>
+                      <p className="text-lg font-bold text-foreground">
+                        {activeScenario.baseline_emissions?.toFixed(1) ?? 0} t
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Target</p>
+                      <p className="text-lg font-bold text-green-600">
+                        {activeScenario.target_emissions?.toFixed(1) ?? 0} t
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Timeline</p>
+                      <p className="text-lg font-bold text-foreground">
+                        {activeScenario.timeline_months ?? 12} months
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Calendar className="h-3 w-3" /> Target Date
+                      </p>
+                      <p className="text-lg font-bold text-foreground">
+                        {activeScenario.target_date
+                          ? new Date(activeScenario.target_date).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
+                          : 'Not set'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">
+                    No reduction scenarios created yet.
+                  </p>
+                  <Button asChild className="gradient-primary">
+                    <Link to="/reduction-planner">Create Your First Scenario</Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );
