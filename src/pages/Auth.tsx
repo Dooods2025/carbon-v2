@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/select";
 import { Leaf, Mail, Lock, Eye, EyeOff, ArrowLeft, Building2, Hash, Factory, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
 
 const INDUSTRIES = [
   "Agriculture",
@@ -36,6 +38,14 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, signIn, signUp } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/upload");
+    }
+  }, [user, navigate]);
 
   // Login fields
   const [email, setEmail] = useState("");
@@ -97,18 +107,71 @@ const Auth = () => {
       }
     }
 
-    // Simulate authentication delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      if (isSignUp) {
+        // Create account
+        const { data, error } = await signUp(email, password);
 
-    toast({
-      title: isSignUp ? "Account created!" : "Welcome back!",
-      description: "Redirecting to dashboard...",
-    });
+        if (error) {
+          toast({
+            title: "Sign up failed",
+            description: error.message,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
 
-    // Redirect to upload page
-    setTimeout(() => {
-      navigate("/upload");
-    }, 500);
+        // Create business profile for new user
+        if (data.user) {
+          const { error: profileError } = await supabase
+            .from('business_profiles')
+            .insert({
+              user_id: data.user.id,
+              company_name: businessName,
+              abn: abn,
+              contact_email: contactEmail,
+              industry: industry,
+              num_sites: parseInt(numberOfSites) || 1,
+            });
+
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+          }
+        }
+
+        toast({
+          title: "Account created!",
+          description: "Please check your email to verify your account.",
+        });
+      } else {
+        // Sign in
+        const { error } = await signIn(email, password);
+
+        if (error) {
+          toast({
+            title: "Sign in failed",
+            description: error.message,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        toast({
+          title: "Welcome back!",
+          description: "Redirecting to dashboard...",
+        });
+
+        navigate("/upload");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
 
     setIsLoading(false);
   };
