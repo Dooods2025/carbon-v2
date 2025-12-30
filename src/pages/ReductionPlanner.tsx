@@ -37,7 +37,11 @@ import {
   Pencil,
   Trash,
   Target,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useScenarios } from "@/hooks/useScenarios";
+import { useToast } from "@/hooks/use-toast";
 import {
   BarChart,
   Bar,
@@ -60,17 +64,22 @@ interface Category {
   reduction: number;
 }
 
-interface SavedScenario {
-  id: string;
-  name: string;
-  targetReduction: number;
-  timeline: string;
-  dateCreated: string;
-}
+const TIMELINE_TO_MONTHS: Record<string, number> = {
+  "6 months": 6,
+  "12 months": 12,
+  "18 months": 18,
+  "24 months": 24,
+  "5 years": 60,
+};
 
 const ReductionPlanner = () => {
+  const { user } = useAuth();
+  const { scenarios, isLoading, createScenario, deleteScenario } = useScenarios(user?.id);
+  const { toast } = useToast();
+
   const [scenarioName, setScenarioName] = useState("");
   const [timeline, setTimeline] = useState("12 months");
+  const [isSaving, setIsSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([
     { name: "Electricity", icon: Zap, color: "text-blue-500", bgColor: "bg-blue-100", currentEmissions: 98.32, reduction: 0 },
     { name: "Gas", icon: Flame, color: "text-orange-500", bgColor: "bg-orange-100", currentEmissions: 52.18, reduction: 0 },
@@ -78,10 +87,6 @@ const ReductionPlanner = () => {
     { name: "Water", icon: Droplets, color: "text-cyan-500", bgColor: "bg-cyan-100", currentEmissions: 8.92, reduction: 0 },
     { name: "Waste", icon: Trash2, color: "text-amber-700", bgColor: "bg-amber-100", currentEmissions: 18.76, reduction: 0 },
     { name: "Fuel", icon: Fuel, color: "text-red-500", bgColor: "bg-red-100", currentEmissions: 17.53, reduction: 0 },
-  ]);
-  const [savedScenarios, setSavedScenarios] = useState<SavedScenario[]>([
-    { id: "1", name: "Net Zero 2030", targetReduction: 45, timeline: "5 years", dateCreated: "2024-12-15" },
-    { id: "2", name: "Quick Wins Q1", targetReduction: 15, timeline: "6 months", dateCreated: "2024-12-20" },
   ]);
 
   const currentTotal = categories.reduce((sum, cat) => sum + cat.currentEmissions, 0);
@@ -100,21 +105,73 @@ const ReductionPlanner = () => {
     setTimeline("12 months");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!scenarioName.trim()) return;
-    const newScenario: SavedScenario = {
-      id: Date.now().toString(),
-      name: scenarioName,
-      targetReduction: Math.round(totalReduction),
-      timeline,
-      dateCreated: new Date().toISOString().split('T')[0],
-    };
-    setSavedScenarios([...savedScenarios, newScenario]);
-    setScenarioName("");
+    if (!user) {
+      toast({
+        title: "Not logged in",
+        description: "Please log in to save scenarios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+
+    // Build reductions object
+    const reductions: Record<string, number> = {};
+    categories.forEach(cat => {
+      reductions[cat.name.toLowerCase()] = cat.reduction;
+    });
+
+    const timelineMonths = TIMELINE_TO_MONTHS[timeline] || 12;
+    const targetDate = new Date();
+    targetDate.setMonth(targetDate.getMonth() + timelineMonths);
+
+    try {
+      await createScenario.mutateAsync({
+        name: scenarioName,
+        baseline_emissions: currentTotal,
+        reductions,
+        target_emissions: targetTotal,
+        reduction_percentage: totalReduction,
+        timeline_months: timelineMonths,
+        target_date: targetDate.toISOString().split('T')[0],
+      });
+
+      toast({
+        title: "Scenario saved!",
+        description: `"${scenarioName}" has been saved successfully.`,
+      });
+
+      // Reset form
+      setScenarioName("");
+      setCategories(categories.map(cat => ({ ...cat, reduction: 0 })));
+    } catch (error) {
+      toast({
+        title: "Error saving scenario",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    }
+
+    setIsSaving(false);
   };
 
-  const handleDelete = (id: string) => {
-    setSavedScenarios(savedScenarios.filter(s => s.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteScenario.mutateAsync(id);
+      toast({
+        title: "Scenario deleted",
+        description: "The scenario has been removed.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error deleting scenario",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Chart data
@@ -256,13 +313,17 @@ const ReductionPlanner = () => {
 
             {/* Action Buttons */}
             <div className="space-y-3">
-              <Button 
-                onClick={handleSave} 
+              <Button
+                onClick={handleSave}
                 className="w-full gradient-primary"
-                disabled={!scenarioName.trim()}
+                disabled={!scenarioName.trim() || isSaving}
               >
-                <Save className="h-4 w-4 mr-2" />
-                Save Scenario
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {isSaving ? "Saving..." : "Save Scenario"}
               </Button>
               <Button onClick={handleReset} variant="outline" className="w-full">
                 <RotateCcw className="h-4 w-4 mr-2" />
@@ -421,7 +482,12 @@ const ReductionPlanner = () => {
             <CardTitle className="text-lg">Saved Scenarios</CardTitle>
           </CardHeader>
           <CardContent>
-            {savedScenarios.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin" />
+                <p>Loading scenarios...</p>
+              </div>
+            ) : scenarios.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Target className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>No scenarios saved yet. Create your first reduction plan above!</p>
@@ -439,36 +505,43 @@ const ReductionPlanner = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {savedScenarios.map((scenario) => (
-                      <TableRow key={scenario.id}>
-                        <TableCell className="font-medium">{scenario.name}</TableCell>
-                        <TableCell className="text-right">
-                          <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                            -{scenario.targetReduction}%
-                          </span>
-                        </TableCell>
-                        <TableCell>{scenario.timeline}</TableCell>
-                        <TableCell>{scenario.dateCreated}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => handleDelete(scenario.id)}
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {scenarios.map((scenario) => {
+                      const timelineLabel = scenario.timeline_months
+                        ? scenario.timeline_months >= 12
+                          ? `${Math.round(scenario.timeline_months / 12)} year${scenario.timeline_months >= 24 ? 's' : ''}`
+                          : `${scenario.timeline_months} months`
+                        : 'N/A';
+                      return (
+                        <TableRow key={scenario.id}>
+                          <TableCell className="font-medium">{scenario.name}</TableCell>
+                          <TableCell className="text-right">
+                            <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                              -{scenario.reduction_percentage?.toFixed(0) ?? 0}%
+                            </span>
+                          </TableCell>
+                          <TableCell>{timelineLabel}</TableCell>
+                          <TableCell>{new Date(scenario.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(scenario.id)}
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
