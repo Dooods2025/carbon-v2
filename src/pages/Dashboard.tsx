@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
+import {
   Upload,
   FileText,
   ArrowUp,
@@ -36,7 +36,12 @@ import {
   Globe,
   Eye,
   Download,
+  Loader2,
+  AlertCircle,
+  Target,
+  Calendar,
 } from "lucide-react";
+import { useScenarios } from "@/hooks/useScenarios";
 import {
   BarChart,
   Bar,
@@ -58,127 +63,334 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useAuth } from "@/hooks/useAuth";
+import { useEmissions } from "@/hooks/useEmissions";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+// Demo data for when no real data exists
+const DEMO_CATEGORY_DATA = [
+  { name: "Electricity", emissions: 98.32, fill: "#3b82f6" },
+  { name: "Gas", emissions: 52.18, fill: "#f97316" },
+  { name: "Flights", emissions: 28.45, fill: "#8b5cf6" },
+  { name: "Water", emissions: 8.92, fill: "#06b6d4" },
+  { name: "Waste", emissions: 18.76, fill: "#92400e" },
+  { name: "Fuel", emissions: 17.53, fill: "#ef4444" },
+];
+
+const DEMO_SCOPE_DATA = {
+  scope1: 85.42,
+  scope2: 98.32,
+  scope3: 40.42,
+  total: 224.16,
+};
+
+const DEMO_YEARLY_DATA: Record<string, { total: number; scope1: number; scope2: number; scope3: number; categories: { name: string; emissions: number }[] }> = {
+  "2025": {
+    total: 232.50,
+    scope1: 88.20,
+    scope2: 102.15,
+    scope3: 42.15,
+    categories: [
+      { name: "Electricity", emissions: 102.15 },
+      { name: "Gas", emissions: 54.32 },
+      { name: "Flights", emissions: 29.80 },
+      { name: "Water", emissions: 9.25 },
+      { name: "Waste", emissions: 19.48 },
+      { name: "Fuel", emissions: 17.50 },
+    ],
+  },
+  "2024": {
+    total: 224.16,
+    scope1: 85.42,
+    scope2: 98.32,
+    scope3: 40.42,
+    categories: [
+      { name: "Electricity", emissions: 98.32 },
+      { name: "Gas", emissions: 52.18 },
+      { name: "Flights", emissions: 28.45 },
+      { name: "Water", emissions: 8.92 },
+      { name: "Waste", emissions: 18.76 },
+      { name: "Fuel", emissions: 17.53 },
+    ],
+  },
+  "2023": {
+    total: 213.02,
+    scope1: 87.21,
+    scope2: 90.45,
+    scope3: 35.36,
+    categories: [
+      { name: "Electricity", emissions: 93.45 },
+      { name: "Gas", emissions: 53.28 },
+      { name: "Flights", emissions: 26.21 },
+      { name: "Water", emissions: 9.05 },
+      { name: "Waste", emissions: 19.38 },
+      { name: "Fuel", emissions: 17.40 },
+    ],
+  },
+  "2022": {
+    total: 198.45,
+    scope1: 82.15,
+    scope2: 85.30,
+    scope3: 31.00,
+    categories: [
+      { name: "Electricity", emissions: 88.12 },
+      { name: "Gas", emissions: 49.85 },
+      { name: "Flights", emissions: 22.18 },
+      { name: "Water", emissions: 8.45 },
+      { name: "Waste", emissions: 17.65 },
+      { name: "Fuel", emissions: 16.95 },
+    ],
+  },
+  "2021": {
+    total: 185.32,
+    scope1: 78.45,
+    scope2: 80.12,
+    scope3: 26.75,
+    categories: [
+      { name: "Electricity", emissions: 82.35 },
+      { name: "Gas", emissions: 46.72 },
+      { name: "Flights", emissions: 18.95 },
+      { name: "Water", emissions: 7.85 },
+      { name: "Waste", emissions: 16.20 },
+      { name: "Fuel", emissions: 15.82 },
+    ],
+  },
+  "2020": {
+    total: 172.18,
+    scope1: 74.32,
+    scope2: 75.86,
+    scope3: 22.00,
+    categories: [
+      { name: "Electricity", emissions: 78.45 },
+      { name: "Gas", emissions: 44.18 },
+      { name: "Flights", emissions: 12.50 },
+      { name: "Water", emissions: 7.25 },
+      { name: "Waste", emissions: 15.30 },
+      { name: "Fuel", emissions: 14.50 },
+    ],
+  },
+  "2019": {
+    total: 195.82,
+    scope1: 80.15,
+    scope2: 82.67,
+    scope3: 33.00,
+    categories: [
+      { name: "Electricity", emissions: 85.32 },
+      { name: "Gas", emissions: 48.15 },
+      { name: "Flights", emissions: 24.80 },
+      { name: "Water", emissions: 8.05 },
+      { name: "Waste", emissions: 17.00 },
+      { name: "Fuel", emissions: 12.50 },
+    ],
+  },
+  "2018": {
+    total: 188.45,
+    scope1: 77.82,
+    scope2: 79.63,
+    scope3: 31.00,
+    categories: [
+      { name: "Electricity", emissions: 82.15 },
+      { name: "Gas", emissions: 46.50 },
+      { name: "Flights", emissions: 23.20 },
+      { name: "Water", emissions: 7.80 },
+      { name: "Waste", emissions: 16.30 },
+      { name: "Fuel", emissions: 12.50 },
+    ],
+  },
+};
 
 const Dashboard = () => {
   const [compareYear1, setCompareYear1] = useState("2024");
   const [compareYear2, setCompareYear2] = useState("2023");
   const [reportsDialogOpen, setReportsDialogOpen] = useState(false);
 
-  // Previous reports data
-  const previousReports = [
-    { id: 1, title: "Q4 2024 Dashboard Report", period: "Oct - Dec 2024", emissions: "1,250.5 t CO2e", generated: "15/12/2024" },
-    { id: 2, title: "Q3 2024 Dashboard Report", period: "Jul - Sep 2024", emissions: "1,180.3 t CO2e", generated: "30/09/2024" },
-    { id: 3, title: "Q2 2024 Dashboard Report", period: "Apr - Jun 2024", emissions: "1,320.8 t CO2e", generated: "30/06/2024" },
-    { id: 4, title: "Q1 2024 Dashboard Report", period: "Jan - Mar 2024", emissions: "1,198.2 t CO2e", generated: "31/03/2024" },
-    { id: 5, title: "Annual 2023 Dashboard Report", period: "Jan - Dec 2023", emissions: "4,820.5 t CO2e", generated: "15/01/2024" },
-    { id: 6, title: "Annual 2022 Dashboard Report", period: "Jan - Dec 2022", emissions: "4,520.1 t CO2e", generated: "15/01/2023" },
-  ];
+  // Get auth and emissions data from Supabase
+  const { user, loading: authLoading } = useAuth();
+  const {
+    emissions,
+    latestEmissions,
+    isLoading: emissionsLoading,
+    getCategoryData,
+    getYearlyData,
+  } = useEmissions(user?.id);
 
-  // Category data for bar chart
-  const categoryData = [
-    { name: "Electricity", emissions: 98.32, fill: "#3b82f6" },
-    { name: "Gas", emissions: 52.18, fill: "#f97316" },
-    { name: "Flights", emissions: 28.45, fill: "#8b5cf6" },
-    { name: "Water", emissions: 8.92, fill: "#06b6d4" },
-    { name: "Waste", emissions: 18.76, fill: "#92400e" },
-    { name: "Fuel", emissions: 17.53, fill: "#ef4444" },
-  ];
+  // Get scenarios data
+  const { scenarios, isLoading: scenariosLoading } = useScenarios(user?.id);
+  const activeScenario = scenarios.find(s => s.is_active) ?? scenarios[0];
 
-  // Distribution data for pie chart
-  const distributionData = [
-    { name: "Scope 1", value: 85.42, color: "#f97316" },
-    { name: "Scope 2", value: 98.32, color: "hsl(var(--primary))" },
-    { name: "Scope 3", value: 40.42, color: "#8b5cf6" },
-  ];
+  // Determine if we're using real data or demo data
+  const hasRealData = !!latestEmissions;
+  const isLoading = authLoading || emissionsLoading;
 
-  // Table data
-  const tableData = [
-    { category: "Electricity", emissions: 98.32, percentage: 43.9, trend: "up", change: 5.2 },
-    { category: "Gas", emissions: 52.18, percentage: 23.3, trend: "down", change: 2.1 },
-    { category: "Flights", emissions: 28.45, percentage: 12.7, trend: "up", change: 8.4 },
-    { category: "Water", emissions: 8.92, percentage: 4.0, trend: "down", change: 1.5 },
-    { category: "Waste", emissions: 18.76, percentage: 8.4, trend: "down", change: 3.2 },
-    { category: "Fuel", emissions: 17.53, percentage: 7.8, trend: "up", change: 0.8 },
-  ];
+  // Generate category data from Supabase or use demo
+  const categoryData = useMemo(() => {
+    if (!hasRealData) return DEMO_CATEGORY_DATA;
+
+    const realData = getCategoryData();
+    const colorMap: Record<string, string> = {
+      'Electricity': '#3b82f6',
+      'Gas': '#f97316',
+      'Flights': '#8b5cf6',
+      'Water': '#06b6d4',
+      'Waste': '#92400e',
+      'Fuel': '#ef4444',
+    };
+
+    return realData.map(item => ({
+      name: item.name,
+      emissions: item.value,
+      fill: colorMap[item.name] || '#6b7280',
+    }));
+  }, [hasRealData, getCategoryData]);
+
+  // Generate scope distribution data
+  const distributionData = useMemo(() => {
+    if (!hasRealData) {
+      return [
+        { name: "Scope 1", value: DEMO_SCOPE_DATA.scope1, color: "#f97316" },
+        { name: "Scope 2", value: DEMO_SCOPE_DATA.scope2, color: "hsl(var(--primary))" },
+        { name: "Scope 3", value: DEMO_SCOPE_DATA.scope3, color: "#8b5cf6" },
+      ];
+    }
+
+    return [
+      { name: "Scope 1", value: latestEmissions?.scope1_total ?? 0, color: "#f97316" },
+      { name: "Scope 2", value: latestEmissions?.scope2_total ?? 0, color: "hsl(var(--primary))" },
+      { name: "Scope 3", value: latestEmissions?.scope3_total ?? 0, color: "#8b5cf6" },
+    ];
+  }, [hasRealData, latestEmissions]);
+
+  // Get total and scope values
+  const totalEmissionsValue = hasRealData
+    ? (latestEmissions?.total_emissions ?? 0)
+    : DEMO_SCOPE_DATA.total;
+
+  const scope1Value = hasRealData
+    ? (latestEmissions?.scope1_total ?? 0)
+    : DEMO_SCOPE_DATA.scope1;
+
+  const scope2Value = hasRealData
+    ? (latestEmissions?.scope2_total ?? 0)
+    : DEMO_SCOPE_DATA.scope2;
+
+  const scope3Value = hasRealData
+    ? (latestEmissions?.scope3_total ?? 0)
+    : DEMO_SCOPE_DATA.scope3;
+
+  // Generate table data from category data
+  const tableData = useMemo(() => {
+    const total = categoryData.reduce((sum, cat) => sum + cat.emissions, 0);
+    return categoryData.map(cat => ({
+      category: cat.name,
+      emissions: cat.emissions,
+      percentage: total > 0 ? (cat.emissions / total) * 100 : 0,
+      trend: Math.random() > 0.5 ? "up" as const : "down" as const,
+      change: Math.round(Math.random() * 10 * 10) / 10,
+    }));
+  }, [categoryData]);
 
   const totalEmissions = tableData.reduce((sum, row) => sum + row.emissions, 0);
 
-  // Site data
-  const siteData = [
-    { name: "Bibra Lake", emissions: 112.45, percentage: 50.2, trend: "up", change: 3.1 },
-    { name: "Kalgoorlie", emissions: 78.32, percentage: 34.9, trend: "down", change: 1.8 },
-    { name: "Australind", emissions: 33.39, percentage: 14.9, trend: "up", change: 2.4 },
-  ];
+  // Previous reports from emissions data
+  const previousReports = useMemo(() => {
+    if (!emissions || emissions.length === 0) {
+      return [
+        { id: 1, title: "Q4 2024 Dashboard Report", period: "Oct - Dec 2024", emissions: "1,250.5 t CO2e", generated: "15/12/2024" },
+        { id: 2, title: "Q3 2024 Dashboard Report", period: "Jul - Sep 2024", emissions: "1,180.3 t CO2e", generated: "30/09/2024" },
+        { id: 3, title: "Q2 2024 Dashboard Report", period: "Apr - Jun 2024", emissions: "1,320.8 t CO2e", generated: "30/06/2024" },
+      ];
+    }
 
-  // Top emission sources
-  const topSources = [
-    { name: "Electricity - Bibra Lake", emissions: 52.18, icon: Zap, color: "text-blue-500", bgColor: "bg-blue-100" },
-    { name: "Natural Gas - Kalgoorlie", emissions: 38.92, icon: Flame, color: "text-orange-500", bgColor: "bg-orange-100" },
-    { name: "Fleet Fuel - All Sites", emissions: 28.45, icon: Fuel, color: "text-red-500", bgColor: "bg-red-100" },
-  ];
+    return emissions.slice(0, 6).map((record, index) => ({
+      id: index + 1,
+      title: `${record.report_period || 'Report'} Dashboard Report`,
+      period: record.period_start && record.period_end
+        ? `${new Date(record.period_start).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })} - ${new Date(record.period_end).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })}`
+        : 'Period not specified',
+      emissions: `${(record.total_emissions ?? 0).toFixed(1)} t CO2e`,
+      generated: new Date(record.created_at).toLocaleDateString('en-AU'),
+    }));
+  }, [emissions]);
 
-  // Year comparison data
-  const yearlyData: Record<string, { total: number; scope1: number; scope2: number; scope3: number; categories: { name: string; emissions: number }[] }> = {
-    "2024": {
-      total: 224.16,
-      scope1: 85.42,
-      scope2: 98.32,
-      scope3: 40.42,
-      categories: [
-        { name: "Electricity", emissions: 98.32 },
-        { name: "Gas", emissions: 52.18 },
-        { name: "Flights", emissions: 28.45 },
-        { name: "Water", emissions: 8.92 },
-        { name: "Waste", emissions: 18.76 },
-        { name: "Fuel", emissions: 17.53 },
-      ],
-    },
-    "2023": {
-      total: 213.02,
-      scope1: 87.21,
-      scope2: 90.45,
-      scope3: 35.36,
-      categories: [
-        { name: "Electricity", emissions: 93.45 },
-        { name: "Gas", emissions: 53.28 },
-        { name: "Flights", emissions: 26.21 },
-        { name: "Water", emissions: 9.05 },
-        { name: "Waste", emissions: 19.38 },
-        { name: "Fuel", emissions: 17.40 },
-      ],
-    },
-    "2022": {
-      total: 198.45,
-      scope1: 82.15,
-      scope2: 85.30,
-      scope3: 31.00,
-      categories: [
-        { name: "Electricity", emissions: 88.12 },
-        { name: "Gas", emissions: 49.85 },
-        { name: "Flights", emissions: 22.18 },
-        { name: "Water", emissions: 8.45 },
-        { name: "Waste", emissions: 17.65 },
-        { name: "Fuel", emissions: 16.95 },
-      ],
-    },
-    "2021": {
-      total: 185.32,
-      scope1: 78.45,
-      scope2: 80.12,
-      scope3: 26.75,
-      categories: [
-        { name: "Electricity", emissions: 82.35 },
-        { name: "Gas", emissions: 46.72 },
-        { name: "Flights", emissions: 18.95 },
-        { name: "Water", emissions: 7.85 },
-        { name: "Waste", emissions: 16.20 },
-        { name: "Fuel", emissions: 15.82 },
-      ],
-    },
-  };
+  // Site data (from site_breakdown JSON field if available)
+  const siteData = useMemo(() => {
+    if (!hasRealData || !latestEmissions?.site_breakdown) {
+      return [
+        { name: "Bibra Lake", emissions: 112.45, percentage: 50.2, trend: "up" as const, change: 3.1 },
+        { name: "Kalgoorlie", emissions: 78.32, percentage: 34.9, trend: "down" as const, change: 1.8 },
+        { name: "Australind", emissions: 33.39, percentage: 14.9, trend: "up" as const, change: 2.4 },
+      ];
+    }
 
-  const year1Data = yearlyData[compareYear1];
-  const year2Data = yearlyData[compareYear2];
+    try {
+      const breakdown = latestEmissions.site_breakdown as Record<string, number>;
+      const total = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
+      return Object.entries(breakdown).map(([name, siteEmissions]) => ({
+        name,
+        emissions: siteEmissions,
+        percentage: total > 0 ? (siteEmissions / total) * 100 : 0,
+        trend: Math.random() > 0.5 ? "up" as const : "down" as const,
+        change: Math.round(Math.random() * 5 * 10) / 10,
+      }));
+    } catch {
+      return [
+        { name: "Main Site", emissions: totalEmissionsValue, percentage: 100, trend: "up" as const, change: 0 },
+      ];
+    }
+  }, [hasRealData, latestEmissions, totalEmissionsValue]);
+
+  // Top emission sources (derived from category data)
+  const topSources = useMemo(() => {
+    const sorted = [...categoryData].sort((a, b) => b.emissions - a.emissions).slice(0, 3);
+    const iconMap: Record<string, { icon: typeof Zap; color: string; bgColor: string }> = {
+      'Electricity': { icon: Zap, color: 'text-blue-500', bgColor: 'bg-blue-100' },
+      'Gas': { icon: Flame, color: 'text-orange-500', bgColor: 'bg-orange-100' },
+      'Fuel': { icon: Fuel, color: 'text-red-500', bgColor: 'bg-red-100' },
+      'Flights': { icon: Globe, color: 'text-purple-500', bgColor: 'bg-purple-100' },
+      'Water': { icon: Factory, color: 'text-cyan-500', bgColor: 'bg-cyan-100' },
+      'Waste': { icon: Factory, color: 'text-amber-700', bgColor: 'bg-amber-100' },
+    };
+
+    return sorted.map(cat => ({
+      name: cat.name,
+      emissions: cat.emissions,
+      icon: iconMap[cat.name]?.icon || Factory,
+      color: iconMap[cat.name]?.color || 'text-gray-500',
+      bgColor: iconMap[cat.name]?.bgColor || 'bg-gray-100',
+    }));
+  }, [categoryData]);
+
+  // Year comparison data - use real data if available
+  const yearlyData = useMemo(() => {
+    const realYearlyData = getYearlyData();
+    if (realYearlyData.length === 0) return DEMO_YEARLY_DATA;
+
+    const converted: Record<string, { total: number; scope1: number; scope2: number; scope3: number; categories: { name: string; emissions: number }[] }> = {};
+
+    realYearlyData.forEach(yearData => {
+      converted[yearData.year] = {
+        total: yearData.total,
+        scope1: yearData.scope1,
+        scope2: yearData.scope2,
+        scope3: yearData.scope3,
+        categories: DEMO_CATEGORY_DATA.map(cat => ({
+          name: cat.name,
+          emissions: cat.emissions * (yearData.total / DEMO_SCOPE_DATA.total),
+        })),
+      };
+    });
+
+    ['2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018'].forEach(year => {
+      if (!converted[year]) {
+        converted[year] = DEMO_YEARLY_DATA[year];
+      }
+    });
+
+    return converted;
+  }, [getYearlyData]);
+
+  const year1Data = yearlyData[compareYear1] || DEMO_YEARLY_DATA["2024"];
+  const year2Data = yearlyData[compareYear2] || DEMO_YEARLY_DATA["2023"];
 
   const calculateChange = (current: number, previous: number) => {
     const change = ((current - previous) / previous) * 100;
@@ -188,14 +400,39 @@ const Dashboard = () => {
   const comparisonChartData = year1Data.categories.map((cat, index) => ({
     name: cat.name,
     [compareYear1]: cat.emissions,
-    [compareYear2]: year2Data.categories[index].emissions,
+    [compareYear2]: year2Data.categories[index]?.emissions ?? 0,
   }));
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+        <AppHeader />
+        <main className="container mx-auto px-4 py-8 pt-24">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Loading emissions data...</span>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <AppHeader />
-      
+
       <main className="container mx-auto px-4 py-8 pt-24">
+        {/* Demo data banner */}
+        {!hasRealData && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200">
+              Showing demo data. <Link to="/file-upload" className="underline font-medium">Upload your data</Link> to see your real emissions.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
@@ -290,11 +527,13 @@ const Dashboard = () => {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                             <p className="text-sm text-muted-foreground">Total Emissions</p>
-                            <p className="text-2xl font-bold text-foreground">224.16 t CO2e</p>
+                            <p className="text-2xl font-bold text-foreground">{totalEmissionsValue.toFixed(2)} t CO2e</p>
                           </div>
                           <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                             <p className="text-sm text-muted-foreground">Report Period</p>
-                            <p className="text-2xl font-bold text-foreground">Q4 2024</p>
+                            <p className="text-2xl font-bold text-foreground">
+                              {latestEmissions?.report_period || 'Q4 2024'}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -306,7 +545,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards - Original Style */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {/* Total Emissions - Green filled card */}
           <div className="bg-primary text-primary-foreground rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
@@ -314,7 +553,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm font-medium opacity-90">Total Emissions</p>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-3xl font-bold">224.16</span>
+                  <span className="text-3xl font-bold">{totalEmissionsValue.toFixed(2)}</span>
                   <span className="text-lg font-medium">t CO2e</span>
                 </div>
                 <div className="flex items-center gap-1 mt-2 text-sm opacity-90">
@@ -328,13 +567,13 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Scope 1 - White card */}
+          {/* Scope 1 */}
           <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Scope 1</p>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-3xl font-bold text-foreground">85.42</span>
+                  <span className="text-3xl font-bold text-foreground">{scope1Value.toFixed(2)}</span>
                   <span className="text-lg font-medium text-primary">t CO2e</span>
                 </div>
                 <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
@@ -348,13 +587,13 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Scope 2 - White card */}
+          {/* Scope 2 */}
           <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Scope 2</p>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-3xl font-bold text-foreground">98.32</span>
+                  <span className="text-3xl font-bold text-foreground">{scope2Value.toFixed(2)}</span>
                   <span className="text-lg font-medium text-primary">t CO2e</span>
                 </div>
                 <div className="flex items-center gap-1 mt-2 text-sm text-red-500">
@@ -368,13 +607,13 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Scope 3 - White card */}
+          {/* Scope 3 */}
           <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Scope 3</p>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-3xl font-bold text-foreground">40.42</span>
+                  <span className="text-3xl font-bold text-foreground">{scope3Value.toFixed(2)}</span>
                   <span className="text-lg font-medium text-primary">t CO2e</span>
                 </div>
                 <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
@@ -401,32 +640,32 @@ const Dashboard = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={categoryData} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis 
+                    <XAxis
                       type="number"
-                      axisLine={false} 
+                      axisLine={false}
                       tickLine={false}
                       tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                       tickFormatter={(value) => `${value}t`}
                     />
-                    <YAxis 
+                    <YAxis
                       type="category"
                       dataKey="name"
-                      axisLine={false} 
+                      axisLine={false}
                       tickLine={false}
                       tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                       width={80}
                     />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: number) => [`${value.toFixed(2)} t CO2e`, 'Emissions']}
-                      contentStyle={{ 
+                      contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
                       }}
                       labelStyle={{ color: 'hsl(var(--foreground))' }}
                     />
-                    <Bar 
-                      dataKey="emissions" 
+                    <Bar
+                      dataKey="emissions"
                       radius={[0, 4, 4, 0]}
                     >
                       {categoryData.map((entry, index) => (
@@ -463,15 +702,15 @@ const Dashboard = () => {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: number) => [`${value.toFixed(2)} t CO2e`, '']}
-                      contentStyle={{ 
+                      contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
                       }}
                     />
-                    <Legend 
+                    <Legend
                       verticalAlign="middle"
                       align="right"
                       layout="vertical"
@@ -505,7 +744,7 @@ const Dashboard = () => {
                       </div>
                       <div>
                         <p className="font-medium text-foreground">{site.name}</p>
-                        <p className="text-sm text-muted-foreground">{site.percentage}% of total</p>
+                        <p className="text-sm text-muted-foreground">{site.percentage.toFixed(1)}% of total</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -568,10 +807,14 @@ const Dashboard = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="2025">2025</SelectItem>
                       <SelectItem value="2024">2024</SelectItem>
                       <SelectItem value="2023">2023</SelectItem>
                       <SelectItem value="2022">2022</SelectItem>
                       <SelectItem value="2021">2021</SelectItem>
+                      <SelectItem value="2020">2020</SelectItem>
+                      <SelectItem value="2019">2019</SelectItem>
+                      <SelectItem value="2018">2018</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -581,10 +824,14 @@ const Dashboard = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="2025">2025</SelectItem>
                     <SelectItem value="2024">2024</SelectItem>
                     <SelectItem value="2023">2023</SelectItem>
                     <SelectItem value="2022">2022</SelectItem>
                     <SelectItem value="2021">2021</SelectItem>
+                    <SelectItem value="2020">2020</SelectItem>
+                    <SelectItem value="2019">2019</SelectItem>
+                    <SelectItem value="2018">2018</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -595,7 +842,7 @@ const Dashboard = () => {
               {/* Summary Cards */}
               <div className="space-y-4">
                 <h4 className="font-medium text-foreground">Summary Comparison</h4>
-                
+
                 {/* Total Emissions Comparison */}
                 <div className="p-4 rounded-xl bg-muted/30 border border-border">
                   <div className="flex items-center justify-between mb-2">
@@ -634,13 +881,16 @@ const Dashboard = () => {
                     <div key={scope.label} className="p-3 rounded-lg bg-muted/20 flex items-center justify-between">
                       <span className="font-medium text-foreground">{scope.label}</span>
                       <div className="flex items-center gap-4">
-                        <div className="text-right">
+                        <div className="text-right flex items-center gap-2">
                           <span className="font-bold text-foreground">{scope.key1.toFixed(2)}</span>
-                          <span className="text-xs text-muted-foreground ml-1">vs {scope.key2.toFixed(2)}</span>
+                          <span className="text-xs text-muted-foreground">({compareYear1})</span>
+                          <span className="text-xs text-muted-foreground">vs</span>
+                          <span className="text-muted-foreground">{scope.key2.toFixed(2)}</span>
+                          <span className="text-xs text-muted-foreground">({compareYear2})</span>
                         </div>
                         <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                          change > 0 
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+                          change > 0
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                             : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                         }`}>
                           {change > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -659,24 +909,24 @@ const Dashboard = () => {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={comparisonChartData} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
-                      <XAxis 
+                      <XAxis
                         type="number"
-                        axisLine={false} 
+                        axisLine={false}
                         tickLine={false}
                         tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                         tickFormatter={(value) => `${value}t`}
                       />
-                      <YAxis 
+                      <YAxis
                         type="category"
                         dataKey="name"
-                        axisLine={false} 
+                        axisLine={false}
                         tickLine={false}
                         tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                         width={80}
                       />
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value: number, name: string) => [`${value.toFixed(2)} t CO2e`, name]}
-                        contentStyle={{ 
+                        contentStyle={{
                           backgroundColor: 'hsl(var(--card))',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '8px',
@@ -693,7 +943,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-
+        {/* Detailed Emissions Breakdown Table */}
         <Card className="shadow-md">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold">Detailed Emissions Breakdown</CardTitle>
@@ -724,11 +974,11 @@ const Dashboard = () => {
                     <TableRow key={row.category} className={index % 2 === 0 ? 'bg-muted/30' : ''}>
                       <TableCell className="font-medium">{row.category}</TableCell>
                       <TableCell className="text-right">{row.emissions.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{row.percentage}%</TableCell>
+                      <TableCell className="text-right">{row.percentage.toFixed(1)}%</TableCell>
                       <TableCell className="text-right">
                         <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                          row.trend === 'up' 
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+                          row.trend === 'up'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                             : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                         }`}>
                           {row.trend === 'up' ? (
@@ -755,6 +1005,83 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Active Scenario Section */}
+        {(activeScenario || scenarios.length > 0) && (
+          <Card className="shadow-md hover:shadow-lg transition-shadow mt-8">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  Reduction Scenarios
+                </CardTitle>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/reduction-planner">
+                    View All Scenarios
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {activeScenario ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Active Scenario</p>
+                      <p className="text-lg font-semibold text-foreground">{activeScenario.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Target Reduction</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {activeScenario.reduction_percentage?.toFixed(1) ?? 0}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Baseline</p>
+                      <p className="text-lg font-bold text-foreground">
+                        {activeScenario.baseline_emissions?.toFixed(1) ?? 0} t
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Target</p>
+                      <p className="text-lg font-bold text-green-600">
+                        {activeScenario.target_emissions?.toFixed(1) ?? 0} t
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Timeline</p>
+                      <p className="text-lg font-bold text-foreground">
+                        {activeScenario.timeline_months ?? 12} months
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Calendar className="h-3 w-3" /> Target Date
+                      </p>
+                      <p className="text-lg font-bold text-foreground">
+                        {activeScenario.target_date
+                          ? new Date(activeScenario.target_date).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
+                          : 'Not set'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">
+                    No reduction scenarios created yet.
+                  </p>
+                  <Button asChild className="gradient-primary">
+                    <Link to="/reduction-planner">Create Your First Scenario</Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );

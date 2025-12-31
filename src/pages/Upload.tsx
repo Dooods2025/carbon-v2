@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles, Pencil } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles, Loader2, ArrowRight, Upload as UploadIcon, ImagePlus, X, Target, Eye } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import AppHeader from "@/components/AppHeader";
 import BusinessProfileSidebar from "@/components/BusinessProfileSidebar";
 import EmissionsSummaryCards from "@/components/EmissionsSummaryCards";
+import { useAuth } from "@/hooks/useAuth";
+import { useEmissions } from "@/hooks/useEmissions";
+import { useScenarios } from "@/hooks/useScenarios";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
+
+interface Recommendation {
+  title: string;
+  description: string;
+  potentialSavings: string;
+  priority: 'high' | 'medium' | 'low';
+  category: string;
+}
 
 interface BusinessProfile {
   // Essential Info
@@ -24,6 +38,7 @@ interface BusinessProfile {
   employees: string;
   sites: string;
   businessType: string;
+  logoUrl: string;
   // Operational Details
   buildingType: string;
   operatingHours: string;
@@ -45,6 +60,12 @@ const industries = [
   "Education",
   "Construction",
   "Technology",
+  "Agriculture",
+  "Energy & Utilities",
+  "Financial Services",
+  "Information Technology",
+  "Mining & Resources",
+  "Transport & Logistics",
   "Other",
 ];
 
@@ -113,6 +134,22 @@ const budgetOptions = [
 ];
 
 const Upload = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { latestEmissions, getCategoryData } = useEmissions(user?.id);
+  const { scenarios } = useScenarios(user?.id);
+  const { toast } = useToast();
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Get the active scenario for progress tracking
+  const activeScenario = scenarios.find(s => s.is_active) ?? scenarios[0];
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>("");
   const [profile, setProfile] = useState<BusinessProfile>({
     companyName: "",
     abn: "",
@@ -121,6 +158,7 @@ const Upload = () => {
     employees: "",
     sites: "",
     businessType: "",
+    logoUrl: "",
     buildingType: "",
     operatingHours: "",
     energySources: "",
@@ -131,10 +169,107 @@ const Upload = () => {
     budgetAppetite: "",
   });
 
-  const handleEditProfile = () => {
-    // Scroll to essential info section
-    document.getElementById("essential-info")?.scrollIntoView({ behavior: "smooth" });
-  };
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  // Load existing profile from Supabase or create from pending signup data
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user) return;
+
+      try {
+        // First, check if there's pending profile data from signup
+        const pendingProfileStr = localStorage.getItem('pendingProfile');
+        if (pendingProfileStr) {
+          const pendingProfile = JSON.parse(pendingProfileStr);
+
+          // Try to create the profile
+          const { error: insertError } = await supabase
+            .from("business_profiles")
+            .upsert({
+              user_id: user.id,
+              company_name: pendingProfile.company_name,
+              abn: pendingProfile.abn,
+              contact_email: pendingProfile.contact_email,
+              industry: pendingProfile.industry,
+              num_sites: pendingProfile.num_sites,
+            }, { onConflict: 'user_id' });
+
+          if (!insertError) {
+            // Clear the pending data
+            localStorage.removeItem('pendingProfile');
+            toast({
+              title: "Profile created!",
+              description: "Your business profile has been saved.",
+            });
+          } else {
+            console.error("Error saving pending profile:", insertError);
+          }
+        }
+
+        // Now load the profile
+        const { data, error } = await supabase
+          .from("business_profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error && error.code !== "PGRST116") {
+          // PGRST116 = no rows returned
+          console.error("Error loading profile:", error);
+          return;
+        }
+
+        if (data) {
+          // Parse initiatives from string if needed
+          let initiatives: string[] = [];
+          if (data.sustainability_initiatives) {
+            try {
+              initiatives = JSON.parse(data.sustainability_initiatives);
+            } catch {
+              initiatives = data.sustainability_initiatives.split(",").map((s: string) => s.trim());
+            }
+          }
+
+          setProfile({
+            companyName: data.company_name || "",
+            abn: data.abn || "",
+            contactEmail: data.contact_email || "",
+            industry: data.industry || "",
+            employees: data.num_employees?.toString() || "",
+            sites: data.num_sites?.toString() || "",
+            businessType: data.business_type || "",
+            logoUrl: data.logo_url || "",
+            buildingType: data.building_type || "",
+            operatingHours: data.operating_hours || "",
+            energySources: data.energy_sources || "",
+            fleetSize: data.fleet_size || "",
+            fleetType: data.fleet_type || "",
+            initiatives: initiatives,
+            target: data.sustainability_goal || "",
+            budgetAppetite: data.budget_appetite || "",
+          });
+
+          // Set logo preview if exists
+          if (data.logo_url) {
+            setLogoPreview(data.logo_url);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading profile:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      loadProfile();
+    }
+  }, [user]);
 
   const handleChange = (field: keyof BusinessProfile, value: string | string[]) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -150,10 +285,267 @@ const Upload = () => {
     });
   };
 
-  const handleSaveProfile = () => {
-    console.log("Saving profile:", profile);
-    // TODO: Save to backend
+  // Logo upload handler
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({
+          title: "File too large",
+          description: "Logo must be less than 2MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
   };
+
+  const removeLogo = () => {
+    setLogoFile(null);
+    setLogoPreview("");
+    setProfile(prev => ({ ...prev, logoUrl: "" }));
+    if (logoInputRef.current) {
+      logoInputRef.current.value = "";
+    }
+  };
+
+  // Generate insights based on profile and emissions data
+  const generateInsights = () => {
+    setIsGeneratingInsights(true);
+
+    // Simulate AI processing delay
+    setTimeout(() => {
+      const newRecommendations: Recommendation[] = [];
+
+      // Get emissions data
+      const categoryData = getCategoryData();
+      const topEmitter = categoryData.length > 0
+        ? categoryData.reduce((prev, current) => prev.value > current.value ? prev : current)
+        : null;
+
+      // Electricity-based recommendations
+      if (topEmitter?.name === 'Electricity' || profile.energySources === 'Grid electricity only') {
+        newRecommendations.push({
+          title: "Switch to Renewable Energy",
+          description: "Consider switching to a green energy provider or installing solar panels. Your electricity is your highest emission source.",
+          potentialSavings: `Up to ${((latestEmissions?.electricity_emissions ?? 50) * 0.8).toFixed(1)}t CO2e/year`,
+          priority: 'high',
+          category: 'energy',
+        });
+      }
+
+      // Building-based recommendations
+      if (profile.buildingType === 'Leased' || profile.operatingHours === '24/7 operations') {
+        newRecommendations.push({
+          title: "Optimize HVAC Schedule",
+          description: "Implement smart building controls to reduce heating and cooling outside of peak hours.",
+          potentialSavings: "15-25% reduction in energy use",
+          priority: 'medium',
+          category: 'operations',
+        });
+      }
+
+      // Fleet-based recommendations
+      if (profile.fleetSize && profile.fleetSize !== "No vehicles" && profile.fleetType !== 'Electric') {
+        newRecommendations.push({
+          title: "Transition Fleet to EVs",
+          description: `Consider transitioning your ${profile.fleetSize.toLowerCase()} to electric vehicles to reduce Scope 1 emissions.`,
+          potentialSavings: `Up to ${((latestEmissions?.fuel_emissions ?? 20) * 0.9).toFixed(1)}t CO2e/year`,
+          priority: profile.fleetSize.includes('Large') ? 'high' : 'medium',
+          category: 'transport',
+        });
+      }
+
+      // No sustainability initiatives
+      if (profile.initiatives.includes('None yet') || profile.initiatives.length === 0) {
+        newRecommendations.push({
+          title: "Start a Recycling Program",
+          description: "Implement comprehensive recycling across all sites to reduce waste-to-landfill emissions.",
+          potentialSavings: `${((latestEmissions?.waste_emissions ?? 10) * 0.5).toFixed(1)}t CO2e/year`,
+          priority: 'low',
+          category: 'waste',
+        });
+      }
+
+      // LED lighting for all
+      newRecommendations.push({
+        title: "LED Lighting Upgrade",
+        description: "Replace all lighting with energy-efficient LED alternatives for immediate energy savings.",
+        potentialSavings: "10-20% electricity reduction",
+        priority: 'medium',
+        category: 'energy',
+      });
+
+      // Budget-based recommendations
+      if (profile.budgetAppetite === 'Looking for no-cost changes only') {
+        newRecommendations.push({
+          title: "Employee Awareness Campaign",
+          description: "Launch a sustainability awareness program to encourage energy-saving behaviors at no cost.",
+          potentialSavings: "5-10% overall reduction",
+          priority: 'low',
+          category: 'culture',
+        });
+      }
+
+      // Water-based recommendations if water emissions exist
+      if ((latestEmissions?.water_emissions ?? 0) > 0) {
+        newRecommendations.push({
+          title: "Water Efficiency Measures",
+          description: "Install water-efficient fixtures and implement rainwater harvesting systems.",
+          potentialSavings: `${((latestEmissions?.water_emissions ?? 5) * 0.3).toFixed(1)}t CO2e/year`,
+          priority: 'low',
+          category: 'water',
+        });
+      }
+
+      setRecommendations(newRecommendations.slice(0, 5)); // Limit to 5 recommendations
+      setIsGeneratingInsights(false);
+
+      toast({
+        title: "Insights Generated!",
+        description: `${newRecommendations.length} recommendations tailored to your business.`,
+      });
+    }, 1500);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) {
+      toast({
+        title: "Not logged in",
+        description: "Please log in to save your profile.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      let logoUrl = profile.logoUrl;
+
+      // Upload logo if a new file was selected
+      if (logoFile) {
+        const fileExt = logoFile.name.split('.').pop();
+        const fileName = `${user.id}/logo.${fileExt}`;
+
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from('logos')
+          .upload(fileName, logoFile, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error('Logo upload error:', uploadError);
+          // Continue without logo if storage isn't set up
+          toast({
+            title: "Logo upload skipped",
+            description: "Storage not configured. Profile saved without logo.",
+          });
+        } else {
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('logos')
+            .getPublicUrl(fileName);
+          logoUrl = urlData.publicUrl;
+        }
+      }
+
+      // Check if profile exists
+      const { data: existing } = await supabase
+        .from("business_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      const profileData = {
+        user_id: user.id,
+        company_name: profile.companyName,
+        abn: profile.abn,
+        contact_email: profile.contactEmail,
+        industry: profile.industry,
+        num_employees: profile.employees ? parseInt(profile.employees) : null,
+        num_sites: profile.sites ? parseInt(profile.sites) : null,
+        business_type: profile.businessType,
+        logo_url: logoUrl,
+        building_type: profile.buildingType,
+        operating_hours: profile.operatingHours,
+        energy_sources: profile.energySources,
+        has_fleet: profile.fleetSize !== "No vehicles" && profile.fleetSize !== "",
+        fleet_size: profile.fleetSize,
+        fleet_type: profile.fleetType,
+        sustainability_initiatives: JSON.stringify(profile.initiatives),
+        sustainability_goal: profile.target,
+        budget_appetite: profile.budgetAppetite,
+        updated_at: new Date().toISOString(),
+      };
+
+      let error;
+
+      if (existing) {
+        // Update existing profile
+        const result = await supabase
+          .from("business_profiles")
+          .update(profileData)
+          .eq("user_id", user.id);
+        error = result.error;
+      } else {
+        // Insert new profile
+        const result = await supabase
+          .from("business_profiles")
+          .insert(profileData);
+        error = result.error;
+      }
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state with the new logo URL
+      if (logoUrl !== profile.logoUrl) {
+        setProfile(prev => ({ ...prev, logoUrl }));
+        setLogoFile(null); // Clear the file after successful upload
+      }
+
+      toast({
+        title: "Profile saved!",
+        description: "Your business profile has been updated.",
+      });
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      toast({
+        title: "Error saving profile",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleContinueToUpload = async () => {
+    // Save profile first, then navigate
+    await handleSaveProfile();
+    navigate("/file-upload");
+  };
+
+  // Show loading state
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <AppHeader />
+        <main className="container mx-auto px-4 py-12 pt-28">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Loading profile...</span>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -169,6 +561,13 @@ const Upload = () => {
               contactEmail={profile.contactEmail}
               industry={profile.industry}
               sites={profile.sites}
+              logoUrl={logoPreview || profile.logoUrl}
+              scenarioProgress={activeScenario ? {
+                name: activeScenario.name,
+                targetReduction: activeScenario.target_reduction ?? 20,
+                actualReduction: latestEmissions ? Math.max(0, ((latestEmissions.total_emissions ?? 0) > 0 ? 5 : 0)) : 0,
+                status: 'on-track',
+              } : null}
             />
           </div>
 
@@ -176,9 +575,9 @@ const Upload = () => {
           <div className="order-1 lg:order-2 space-y-8">
             {/* Emissions Summary Cards */}
             <EmissionsSummaryCards
-              totalEmissions={0}
-              scope1Emissions={0}
-              scope2Emissions={0}
+              totalEmissions={latestEmissions?.total_emissions ?? 0}
+              scope1Emissions={latestEmissions?.scope1_total ?? 0}
+              scope2Emissions={latestEmissions?.scope2_total ?? 0}
             />
 
             {/* Essential Info Section */}
@@ -216,6 +615,61 @@ const Upload = () => {
                     onChange={(e) => handleChange("abn", e.target.value)}
                     className="h-12"
                   />
+                </div>
+
+                {/* Company Logo Upload */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <ImagePlus className="w-4 h-4" />
+                    Company Logo
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    {/* Logo Preview */}
+                    {(logoPreview || profile.logoUrl) ? (
+                      <div className="relative">
+                        <div className="w-20 h-20 rounded-lg border-2 border-primary/20 overflow-hidden bg-muted flex items-center justify-center">
+                          <img
+                            src={logoPreview || profile.logoUrl}
+                            alt="Company logo"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={removeLogo}
+                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                        <ImagePlus className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/svg+xml"
+                        onChange={handleLogoSelect}
+                        className="hidden"
+                        id="logo-upload"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => logoInputRef.current?.click()}
+                        className="w-full h-12"
+                      >
+                        <UploadIcon className="w-4 h-4 mr-2" />
+                        {(logoPreview || profile.logoUrl) ? "Change Logo" : "Upload Logo"}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        PNG, JPG or SVG (max 2MB)
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="md:col-span-2 space-y-2">
@@ -494,6 +948,88 @@ const Upload = () => {
               </div>
             </section>
 
+            {/* Active Scenario Section */}
+            <section className="bg-card rounded-2xl border border-border p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-display font-bold text-foreground">
+                    Active Scenario
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Your current reduction plan from the Planner
+                  </p>
+                </div>
+                <Link to="/reduction-planner">
+                  <Button variant="outline" size="sm">
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Planner
+                  </Button>
+                </Link>
+              </div>
+
+              {activeScenario ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-foreground">{activeScenario.name}</h3>
+                      <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                        {activeScenario.is_active ? 'Active' : 'Saved'}
+                      </span>
+                    </div>
+                    {activeScenario.description && (
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {activeScenario.description}
+                      </p>
+                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Target Reduction</p>
+                        <p className="text-lg font-bold text-primary">
+                          {activeScenario.target_reduction ?? 20}%
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Target Year</p>
+                        <p className="text-lg font-bold text-foreground">
+                          {activeScenario.target_year ?? 2030}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="flex gap-3">
+                    <Link to="/reduction-planner" className="flex-1">
+                      <Button variant="outline" className="w-full h-10">
+                        Edit Scenario
+                      </Button>
+                    </Link>
+                    <Link to="/dashboard" className="flex-1">
+                      <Button className="w-full h-10 gradient-primary">
+                        Track Progress
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-muted/30 rounded-xl p-6 border border-dashed border-border text-center">
+                  <Target className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                  <h3 className="font-medium text-foreground mb-2">No Active Scenario</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create a reduction scenario in the Planner to track your sustainability goals.
+                  </p>
+                  <Link to="/reduction-planner">
+                    <Button className="gradient-primary">
+                      Create Scenario
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </section>
+
             {/* Insights & Recommendations Section */}
             <section className="bg-card rounded-2xl border border-border p-6 md:p-8">
               <div className="flex items-center gap-3 mb-6">
@@ -511,73 +1047,136 @@ const Upload = () => {
               </div>
 
               <div className="space-y-4">
-                {/* Placeholder for insights */}
-                <div className="bg-muted/30 rounded-xl p-6 border border-dashed border-border">
-                  <div className="flex flex-col items-center justify-center text-center py-8">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                      <Sparkles className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Generate Insights
-                    </h3>
-                    <p className="text-sm text-muted-foreground max-w-md mb-4">
-                      Complete your business profile and upload emissions data to receive 
-                      personalised recommendations for reducing your carbon footprint.
-                    </p>
-                    <Button className="gradient-primary">
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Generate Recommendations
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Sample insight cards (will be populated with real data) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-50">
-                  <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-800 flex items-center justify-center shrink-0">
-                        <Lightbulb className="w-4 h-4 text-green-600 dark:text-green-400" />
+                {recommendations.length === 0 ? (
+                  /* Generate button when no recommendations */
+                  <div className="bg-muted/30 rounded-xl p-6 border border-dashed border-border">
+                    <div className="flex flex-col items-center justify-center text-center py-8">
+                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                        <Sparkles className="w-8 h-8 text-primary" />
                       </div>
-                      <div>
-                        <h4 className="font-medium text-foreground">Switch to LED Lighting</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Potential savings: 2.5t CO2e/year
-                        </p>
-                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                        Generate Insights
+                      </h3>
+                      <p className="text-sm text-muted-foreground max-w-md mb-4">
+                        Complete your business profile and upload emissions data to receive
+                        personalised recommendations for reducing your carbon footprint.
+                      </p>
+                      <Button
+                        className="gradient-primary"
+                        onClick={generateInsights}
+                        disabled={isGeneratingInsights}
+                      >
+                        {isGeneratingInsights ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Generate Recommendations
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-800 flex items-center justify-center shrink-0">
-                        <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-foreground">Optimize HVAC Schedule</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Potential savings: 4.2t CO2e/year
-                        </p>
-                      </div>
+                ) : (
+                  /* Display recommendations */
+                  <>
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-muted-foreground">
+                        {recommendations.length} recommendations based on your profile
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={generateInsights}
+                        disabled={isGeneratingInsights}
+                      >
+                        {isGeneratingInsights ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Refresh
+                          </>
+                        )}
+                      </Button>
                     </div>
-                  </div>
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {recommendations.map((rec, index) => {
+                        const priorityColors = {
+                          high: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                          medium: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
+                          low: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+                        };
+                        const priorityIconColors = {
+                          high: 'bg-red-100 dark:bg-red-800 text-red-600 dark:text-red-400',
+                          medium: 'bg-amber-100 dark:bg-amber-800 text-amber-600 dark:text-amber-400',
+                          low: 'bg-green-100 dark:bg-green-800 text-green-600 dark:text-green-400',
+                        };
+                        return (
+                          <div
+                            key={index}
+                            className={`rounded-xl p-4 border ${priorityColors[rec.priority]}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${priorityIconColors[rec.priority]}`}>
+                                <Lightbulb className="w-4 h-4" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium text-foreground">{rec.title}</h4>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
+                                    rec.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                                    rec.priority === 'medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' :
+                                    'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                  }`}>
+                                    {rec.priority}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {rec.description}
+                                </p>
+                                <p className="text-sm font-medium text-primary mt-2">
+                                  Potential savings: {rec.potentialSavings}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             </section>
 
-            {/* Save & Edit Buttons */}
-            <div className="flex justify-end gap-3">
-              <Button
-                onClick={handleEditProfile}
-                variant="outline"
-                className="px-8 h-12"
-              >
-                <Pencil className="w-4 h-4 mr-2" />
-                Edit Profile
-              </Button>
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row justify-end gap-3">
               <Button
                 onClick={handleSaveProfile}
-                className="gradient-primary text-primary-foreground px-8 h-12"
+                variant="outline"
+                className="px-8 h-12"
+                disabled={isSaving}
               >
-                Save Profile
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Profile"
+                )}
+              </Button>
+              <Button
+                onClick={handleContinueToUpload}
+                className="gradient-primary text-primary-foreground px-8 h-12"
+                disabled={isSaving}
+              >
+                <UploadIcon className="w-4 h-4 mr-2" />
+                Continue to Upload Data
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </div>

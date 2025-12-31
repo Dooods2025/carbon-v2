@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Zap,
   Flame,
@@ -31,6 +32,7 @@ import {
   Car,
   Home,
   TrendingDown,
+  TrendingUp,
   Save,
   RotateCcw,
   Eye,
@@ -38,10 +40,18 @@ import {
   Trash,
   Target,
   Loader2,
+  Building2,
+  Leaf,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useScenarios } from "@/hooks/useScenarios";
+import { useEmissions } from "@/hooks/useEmissions";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 import {
   BarChart,
   Bar,
@@ -72,14 +82,26 @@ const TIMELINE_TO_MONTHS: Record<string, number> = {
   "5 years": 60,
 };
 
+interface BusinessContext {
+  industry: string;
+  businessType: string;
+  energySources: string;
+  fleetSize: string;
+  initiatives: string[];
+  target: string;
+  budgetAppetite: string;
+}
+
 const ReductionPlanner = () => {
   const { user } = useAuth();
   const { scenarios, isLoading, createScenario, deleteScenario } = useScenarios(user?.id);
+  const { latestEmissions, emissions } = useEmissions(user?.id);
   const { toast } = useToast();
 
   const [scenarioName, setScenarioName] = useState("");
   const [timeline, setTimeline] = useState("12 months");
   const [isSaving, setIsSaving] = useState(false);
+  const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
   const [categories, setCategories] = useState<Category[]>([
     { name: "Electricity", icon: Zap, color: "text-blue-500", bgColor: "bg-blue-100", currentEmissions: 98.32, reduction: 0 },
     { name: "Gas", icon: Flame, color: "text-orange-500", bgColor: "bg-orange-100", currentEmissions: 52.18, reduction: 0 },
@@ -88,6 +110,80 @@ const ReductionPlanner = () => {
     { name: "Waste", icon: Trash2, color: "text-amber-700", bgColor: "bg-amber-100", currentEmissions: 18.76, reduction: 0 },
     { name: "Fuel", icon: Fuel, color: "text-red-500", bgColor: "bg-red-100", currentEmissions: 17.53, reduction: 0 },
   ]);
+
+  // Load business profile context
+  useEffect(() => {
+    const loadBusinessContext = async () => {
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('business_profiles')
+        .select('industry, business_type, energy_sources, fleet_size, sustainability_initiatives, sustainability_goal, budget_appetite')
+        .eq('user_id', user.id)
+        .single();
+
+      if (data && !error) {
+        let initiatives: string[] = [];
+        if (data.sustainability_initiatives) {
+          try {
+            initiatives = JSON.parse(data.sustainability_initiatives);
+          } catch {
+            initiatives = data.sustainability_initiatives.split(',').map((s: string) => s.trim());
+          }
+        }
+
+        setBusinessContext({
+          industry: data.industry || '',
+          businessType: data.business_type || '',
+          energySources: data.energy_sources || '',
+          fleetSize: data.fleet_size || '',
+          initiatives,
+          target: data.sustainability_goal || '',
+          budgetAppetite: data.budget_appetite || '',
+        });
+      }
+    };
+
+    loadBusinessContext();
+  }, [user]);
+
+  // Update categories with real emissions data if available
+  useEffect(() => {
+    if (latestEmissions) {
+      setCategories([
+        { name: "Electricity", icon: Zap, color: "text-blue-500", bgColor: "bg-blue-100", currentEmissions: latestEmissions.electricity_emissions ?? 98.32, reduction: 0 },
+        { name: "Gas", icon: Flame, color: "text-orange-500", bgColor: "bg-orange-100", currentEmissions: latestEmissions.gas_emissions ?? 52.18, reduction: 0 },
+        { name: "Flights", icon: Plane, color: "text-purple-500", bgColor: "bg-purple-100", currentEmissions: latestEmissions.flights_emissions ?? 28.45, reduction: 0 },
+        { name: "Water", icon: Droplets, color: "text-cyan-500", bgColor: "bg-cyan-100", currentEmissions: latestEmissions.water_emissions ?? 8.92, reduction: 0 },
+        { name: "Waste", icon: Trash2, color: "text-amber-700", bgColor: "bg-amber-100", currentEmissions: latestEmissions.waste_emissions ?? 18.76, reduction: 0 },
+        { name: "Fuel", icon: Fuel, color: "text-red-500", bgColor: "bg-red-100", currentEmissions: latestEmissions.fuel_emissions ?? 17.53, reduction: 0 },
+      ]);
+    }
+  }, [latestEmissions]);
+
+  // Get the active scenario for tracking
+  const activeScenario = scenarios.find(s => s.is_active) ?? scenarios[0];
+
+  // Calculate quarterly variance (comparing actual vs planned)
+  const getQuarterlyVariance = () => {
+    if (!activeScenario || !emissions || emissions.length < 2) return null;
+
+    const currentQuarterEmissions = latestEmissions?.total_emissions ?? 0;
+    const baselineEmissions = activeScenario.baseline_emissions ?? currentTotal;
+    const targetReduction = activeScenario.reduction_percentage ?? 0;
+    const expectedEmissions = baselineEmissions * (1 - targetReduction / 100);
+
+    const variance = ((currentQuarterEmissions - expectedEmissions) / expectedEmissions) * 100;
+
+    return {
+      actual: currentQuarterEmissions,
+      expected: expectedEmissions,
+      variance,
+      status: variance <= -5 ? 'ahead' : variance <= 5 ? 'on-track' : 'off-track',
+    };
+  };
+
+  const quarterlyVariance = getQuarterlyVariance();
 
   const currentTotal = categories.reduce((sum, cat) => sum + cat.currentEmissions, 0);
   const targetTotal = categories.reduce((sum, cat) => sum + cat.currentEmissions * (1 - cat.reduction / 100), 0);
@@ -234,6 +330,95 @@ const ReductionPlanner = () => {
             Plan and compare emission reduction scenarios
           </p>
         </div>
+
+        {/* Scenario Tracking Alert */}
+        {activeScenario && quarterlyVariance && (
+          <Alert className={`mb-6 ${
+            quarterlyVariance.status === 'ahead' ? 'border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950' :
+            quarterlyVariance.status === 'on-track' ? 'border-primary/30 bg-primary/5' :
+            'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950'
+          }`}>
+            {quarterlyVariance.status === 'ahead' ? (
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            ) : quarterlyVariance.status === 'on-track' ? (
+              <Target className="h-4 w-4 text-primary" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+            )}
+            <AlertDescription className={`${
+              quarterlyVariance.status === 'ahead' ? 'text-green-800 dark:text-green-200' :
+              quarterlyVariance.status === 'on-track' ? 'text-foreground' :
+              'text-red-800 dark:text-red-200'
+            }`}>
+              <span className="font-medium">
+                {quarterlyVariance.status === 'ahead' ? 'Ahead of target!' :
+                 quarterlyVariance.status === 'on-track' ? 'On track' :
+                 'Off track - Action needed'}
+              </span>
+              {" "}for scenario "{activeScenario.name}".
+              Current: {quarterlyVariance.actual.toFixed(1)}t vs Expected: {quarterlyVariance.expected.toFixed(1)}t
+              ({quarterlyVariance.variance > 0 ? '+' : ''}{quarterlyVariance.variance.toFixed(1)}% variance)
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Business Context Section */}
+        {businessContext && (businessContext.industry || businessContext.target || businessContext.budgetAppetite) && (
+          <Card className="mb-8">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                Business Context
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {businessContext.industry && (
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Industry</p>
+                    <p className="font-medium text-foreground">{businessContext.industry}</p>
+                  </div>
+                )}
+                {businessContext.energySources && (
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Energy Sources</p>
+                    <p className="font-medium text-foreground">{businessContext.energySources}</p>
+                  </div>
+                )}
+                {businessContext.target && (
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Target className="h-3 w-3" /> Goal
+                    </p>
+                    <p className="font-medium text-primary">{businessContext.target}</p>
+                  </div>
+                )}
+                {businessContext.budgetAppetite && (
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <DollarSign className="h-3 w-3" /> Budget
+                    </p>
+                    <p className="font-medium text-foreground">{businessContext.budgetAppetite}</p>
+                  </div>
+                )}
+              </div>
+              {businessContext.initiatives && businessContext.initiatives.length > 0 && !businessContext.initiatives.includes('None yet') && (
+                <div className="mt-4">
+                  <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                    <Leaf className="h-3 w-3" /> Current Initiatives
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {businessContext.initiatives.map((initiative, idx) => (
+                      <span key={idx} className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                        {initiative}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* LEFT COLUMN - Controls */}
