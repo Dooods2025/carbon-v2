@@ -30,6 +30,7 @@ interface Recommendation {
 
 interface BusinessProfile {
   // Essential Info
+  firstName: string;
   companyName: string;
   abn: string;
   contactEmail: string;
@@ -150,6 +151,7 @@ const Upload = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>("");
   const [profile, setProfile] = useState<BusinessProfile>({
+    firstName: "",
     companyName: "",
     abn: "",
     contactEmail: "",
@@ -235,6 +237,7 @@ const Upload = () => {
           }
 
           setProfile({
+            firstName: data.first_name || "",
             companyName: data.company_name || "",
             abn: data.abn || "",
             contactEmail: data.contact_email || "",
@@ -462,6 +465,7 @@ const Upload = () => {
 
       const profileData = {
         user_id: user.id,
+        first_name: profile.firstName,
         company_name: profile.companyName,
         abn: profile.abn,
         contact_email: profile.contactEmail,
@@ -551,7 +555,39 @@ const Upload = () => {
       <AppHeader />
 
       <main className="container mx-auto px-4 py-12 pt-28 max-w-5xl">
-        <div className="space-y-8">
+        <div className="space-y-6">
+            {/* Personalized Greeting */}
+            <div className="mb-2">
+              <h1 className="text-2xl font-display font-bold text-foreground">
+                Hi {profile.firstName || 'there'}, since you were last here...
+              </h1>
+              <p className="text-muted-foreground text-sm mt-1">
+                Review your profile and track your emissions reduction progress
+              </p>
+            </div>
+
+            {/* News & Updates Panel */}
+            <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl p-4 flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Latest</span>
+                </div>
+                <p className="text-white text-sm">
+                  NGERS reporting deadline approaching. Ensure your Q4 data is uploaded by February 28th for compliance.
+                </p>
+              </div>
+              <div className="hidden sm:flex flex-col gap-2 text-xs text-slate-300">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  <span>2 data gaps detected</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span>On track for Q1 target</span>
+                </div>
+              </div>
+            </div>
+
             {/* Emissions Summary Cards */}
             <EmissionsSummaryCards
               totalEmissions={latestEmissions?.total_emissions ?? 0}
@@ -616,7 +652,7 @@ const Upload = () => {
               {/* Company Name with Logo */}
               <div className="flex items-start gap-4 mb-6 p-4 rounded-xl bg-muted/30 border border-border">
                 <div
-                  className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-dashed border-border hover:border-primary transition-colors cursor-pointer flex items-center justify-center bg-white shrink-0"
+                  className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-dashed border-border hover:border-primary transition-colors cursor-pointer flex items-center justify-center bg-white shrink-0 group"
                   onClick={() => logoInputRef.current?.click()}
                 >
                   {logoPreview || profile.logoUrl ? (
@@ -626,15 +662,16 @@ const Upload = () => {
                         alt="Company logo"
                         className="w-full h-full object-contain"
                       />
+                      {/* Show X only on hover */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           removeLogo();
                         }}
-                        className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90"
+                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-5 h-5 text-white" />
                       </button>
                     </>
                   ) : (
@@ -662,6 +699,17 @@ const Upload = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Your First Name</Label>
+                  <Input
+                    id="firstName"
+                    placeholder="e.g., John"
+                    value={profile.firstName}
+                    onChange={(e) => handleChange("firstName", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="abn">ABN</Label>
                   <Input
@@ -973,33 +1021,86 @@ const Upload = () => {
 
               {activeScenario ? (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-foreground">{activeScenario.name}</h3>
-                      <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-                        {activeScenario.is_active ? 'Active' : 'Saved'}
-                      </span>
-                    </div>
-                    {activeScenario.description && (
-                      <p className="text-sm text-muted-foreground mb-3">
-                        {activeScenario.description}
-                      </p>
-                    )}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Target Reduction</p>
-                        <p className="text-lg font-bold text-primary">
-                          {activeScenario.target_reduction ?? 20}%
-                        </p>
+                  {/* Progress Indicator with Dynamic Color */}
+                  {(() => {
+                    const baseline = activeScenario.baseline_emissions ?? 224;
+                    const target = activeScenario.target_emissions ?? 180;
+                    const current = latestEmissions?.total_emissions ?? baseline;
+                    const totalReduction = baseline - target;
+                    const currentReduction = baseline - current;
+                    const progressPercent = totalReduction > 0 ? Math.min(100, Math.max(0, (currentReduction / totalReduction) * 100)) : 0;
+
+                    // Color transitions from red (0%) -> orange (33%) -> yellow (66%) -> green (100%)
+                    const getProgressColor = (percent: number) => {
+                      if (percent >= 75) return { bg: 'bg-green-500', text: 'text-green-600', light: 'bg-green-100' };
+                      if (percent >= 50) return { bg: 'bg-yellow-500', text: 'text-yellow-600', light: 'bg-yellow-100' };
+                      if (percent >= 25) return { bg: 'bg-orange-500', text: 'text-orange-600', light: 'bg-orange-100' };
+                      return { bg: 'bg-red-500', text: 'text-red-600', light: 'bg-red-100' };
+                    };
+
+                    const colors = getProgressColor(progressPercent);
+
+                    return (
+                      <div className="p-4 rounded-xl bg-card border border-border">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h3 className="font-semibold text-foreground">{activeScenario.name}</h3>
+                            {activeScenario.description && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {activeScenario.description}
+                              </p>
+                            )}
+                          </div>
+                          <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${colors.light} ${colors.text}`}>
+                            {activeScenario.is_active ? 'Active' : 'Saved'}
+                          </span>
+                        </div>
+
+                        {/* Progress Track with Moving Indicator */}
+                        <div className="relative mb-4">
+                          <div className="flex justify-between text-xs text-muted-foreground mb-2">
+                            <span>Baseline: {baseline.toFixed(1)}t</span>
+                            <span className={`font-medium ${colors.text}`}>{progressPercent.toFixed(0)}% Complete</span>
+                            <span>Target: {target.toFixed(1)}t</span>
+                          </div>
+                          <div className="h-4 bg-muted rounded-full overflow-hidden relative">
+                            {/* Progress bar */}
+                            <div
+                              className={`h-full ${colors.bg} rounded-full transition-all duration-700 ease-out`}
+                              style={{ width: `${progressPercent}%` }}
+                            />
+                            {/* Moving indicator dot */}
+                            <div
+                              className={`absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${colors.bg} border-4 border-white shadow-lg transition-all duration-700 ease-out flex items-center justify-center`}
+                              style={{ left: `calc(${progressPercent}% - 12px)` }}
+                            >
+                              <div className="w-2 h-2 bg-white rounded-full" />
+                            </div>
+                          </div>
+                          <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                            <span>Current: {current.toFixed(1)}t CO2e</span>
+                            <span>Remaining: {Math.max(0, current - target).toFixed(1)}t to go</span>
+                          </div>
+                        </div>
+
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Target Reduction</p>
+                            <p className={`text-lg font-bold ${colors.text}`}>
+                              {activeScenario.target_reduction ?? 20}%
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Target Year</p>
+                            <p className="text-lg font-bold text-foreground">
+                              {activeScenario.target_year ?? 2030}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Target Year</p>
-                        <p className="text-lg font-bold text-foreground">
-                          {activeScenario.target_year ?? 2030}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   {/* Quick Actions */}
                   <div className="flex gap-3">

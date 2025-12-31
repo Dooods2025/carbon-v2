@@ -52,28 +52,24 @@ const EmissionsSummaryCards = ({
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
       {cards.map((card) => (
         <div
           key={card.title}
-          className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300 group flex items-center gap-4"
+          className="bg-card border border-border rounded-xl p-3 hover:shadow-md hover:border-primary/30 transition-all duration-300 flex items-center gap-3"
         >
           <div
-            className={`w-14 h-14 rounded-xl ${card.bgColor} flex items-center justify-center shrink-0`}
+            className={`w-10 h-10 rounded-lg ${card.bgColor} flex items-center justify-center shrink-0`}
           >
-            <card.icon className={`w-7 h-7 ${card.iconColor}`} />
+            <card.icon className={`w-5 h-5 ${card.iconColor}`} />
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">{card.title}</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-foreground">
-                {card.value.toFixed(2)} t
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">{card.title}</p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-lg font-bold text-foreground">
+                {card.value.toFixed(1)}t
               </span>
-              <span className="text-sm font-medium text-primary">{card.unit}</span>
             </div>
-            {card.subtitle && (
-              <p className="text-xs text-muted-foreground">{card.subtitle}</p>
-            )}
           </div>
         </div>
       ))}
