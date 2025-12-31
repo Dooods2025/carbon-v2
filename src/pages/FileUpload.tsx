@@ -38,14 +38,43 @@ interface EmissionsResult {
   site_breakdown?: Record<string, number>;
 }
 
-// Generate financial year options (current year back to 2018)
-const getFinancialYearOptions = () => {
-  const currentYear = new Date().getFullYear();
+// Generate quarterly period options (Q1 2022 - Q4 2026)
+const getQuarterlyOptions = () => {
   const options = [];
-  for (let year = currentYear; year >= 2018; year--) {
-    options.push(`${year - 1}-${year}`);
+  for (let year = 2022; year <= 2026; year++) {
+    for (let q = 1; q <= 4; q++) {
+      options.push(`Q${q} ${year}`);
+    }
   }
   return options;
+};
+
+// Get date range for a quarter
+const getQuarterDateRange = (quarter: string) => {
+  const match = quarter.match(/Q(\d) (\d{4})/);
+  if (!match) return { start: '', end: '' };
+
+  const q = parseInt(match[1]);
+  const year = parseInt(match[2]);
+
+  const quarterStarts: Record<number, string> = {
+    1: `${year}-01-01`,
+    2: `${year}-04-01`,
+    3: `${year}-07-01`,
+    4: `${year}-10-01`,
+  };
+
+  const quarterEnds: Record<number, string> = {
+    1: `${year}-03-31`,
+    2: `${year}-06-30`,
+    3: `${year}-09-30`,
+    4: `${year}-12-31`,
+  };
+
+  return {
+    start: quarterStarts[q],
+    end: quarterEnds[q],
+  };
 };
 
 const FileUpload = () => {
@@ -60,7 +89,7 @@ const FileUpload = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const financialYears = getFinancialYearOptions();
+  const quarterlyPeriods = getQuarterlyOptions();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -154,10 +183,12 @@ const FileUpload = () => {
       formData.append("filename", file.name);
       if (reportingPeriod) {
         formData.append("reporting_period", reportingPeriod);
-        // Parse financial year to dates (e.g., "2023-2024" -> July 1, 2023 to June 30, 2024)
-        const [startYear, endYear] = reportingPeriod.split("-").map(Number);
-        formData.append("period_start", `${startYear}-07-01`);
-        formData.append("period_end", `${endYear}-06-30`);
+        // Parse quarterly period to dates (e.g., "Q1 2024" -> Jan 1 to Mar 31)
+        const { start, end } = getQuarterDateRange(reportingPeriod);
+        if (start && end) {
+          formData.append("period_start", start);
+          formData.append("period_end", end);
+        }
       }
 
       // Send file to n8n webhook
@@ -191,10 +222,10 @@ const FileUpload = () => {
       let reportPeriodLabel = result.report_period ?? null;
 
       if (reportingPeriod && !reportPeriodLabel) {
-        reportPeriodLabel = `FY ${reportingPeriod}`;
-        const [startYear, endYear] = reportingPeriod.split("-").map(Number);
-        periodStart = `${startYear}-07-01`;
-        periodEnd = `${endYear}-06-30`;
+        reportPeriodLabel = reportingPeriod;
+        const { start, end } = getQuarterDateRange(reportingPeriod);
+        periodStart = start || periodStart;
+        periodEnd = end || periodEnd;
       }
 
       if (!reportPeriodLabel) {
@@ -367,18 +398,25 @@ const FileUpload = () => {
               </div>
               <Select value={reportingPeriod} onValueChange={setReportingPeriod}>
                 <SelectTrigger className="w-full h-12">
-                  <SelectValue placeholder="Select financial year (e.g., 2023-2024)" />
+                  <SelectValue placeholder="Select quarter (e.g., Q1 2024)" />
                 </SelectTrigger>
-                <SelectContent>
-                  {financialYears.map((year) => (
-                    <SelectItem key={year} value={year}>
-                      FY {year} (1 Jul {year.split("-")[0]} - 30 Jun {year.split("-")[1]})
-                    </SelectItem>
-                  ))}
+                <SelectContent className="max-h-60">
+                  {quarterlyPeriods.map((quarter) => {
+                    const { start, end } = getQuarterDateRange(quarter);
+                    const startDate = new Date(start);
+                    const endDate = new Date(end);
+                    const startFormatted = startDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+                    const endFormatted = endDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+                    return (
+                      <SelectItem key={quarter} value={quarter}>
+                        {quarter} ({startFormatted} - {endFormatted})
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-2">
-                Australian financial year runs from 1 July to 30 June
+                Emissions are calculated quarterly for accurate tracking
               </p>
             </div>
 
@@ -455,9 +493,27 @@ const FileUpload = () => {
 
             {/* File Requirements Section */}
             <div className="mt-8 p-6 rounded-2xl bg-primary/5 border border-primary/20">
-              <div className="flex items-center gap-2 mb-3">
-                <Info className="w-5 h-5 text-primary" />
-                <p className="font-semibold text-primary">File Requirements:</p>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Info className="w-5 h-5 text-primary" />
+                  <p className="font-semibold text-primary">File Requirements:</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-primary text-primary hover:bg-primary/10"
+                  onClick={() => {
+                    // Create and download template
+                    const templateUrl = '/emissions-template.xlsx';
+                    const link = document.createElement('a');
+                    link.href = templateUrl;
+                    link.download = 'emissions-template.xlsx';
+                    link.click();
+                  }}
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Download Template
+                </Button>
               </div>
               <ul className="text-sm text-primary space-y-2 ml-7">
                 <li className="list-disc">Excel file (.xlsx or .xls) or CSV format</li>

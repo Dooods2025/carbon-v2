@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles, Loader2, ArrowRight, Upload as UploadIcon, ImagePlus, X } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles, Loader2, ArrowRight, Upload as UploadIcon, ImagePlus, X, Target, Eye } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import BusinessProfileSidebar from "@/components/BusinessProfileSidebar";
 import EmissionsSummaryCards from "@/components/EmissionsSummaryCards";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmissions } from "@/hooks/useEmissions";
+import { useScenarios } from "@/hooks/useScenarios";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
@@ -136,8 +137,12 @@ const Upload = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { latestEmissions, getCategoryData } = useEmissions(user?.id);
+  const { scenarios } = useScenarios(user?.id);
   const { toast } = useToast();
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Get the active scenario for progress tracking
+  const activeScenario = scenarios.find(s => s.is_active) ?? scenarios[0];
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -238,6 +243,7 @@ const Upload = () => {
             employees: data.num_employees?.toString() || "",
             sites: data.num_sites?.toString() || "",
             businessType: data.business_type || "",
+            logoUrl: data.logo_url || "",
             buildingType: data.building_type || "",
             operatingHours: data.operating_hours || "",
             energySources: data.energy_sources || "",
@@ -247,6 +253,11 @@ const Upload = () => {
             target: data.sustainability_goal || "",
             budgetAppetite: data.budget_appetite || "",
           });
+
+          // Set logo preview if exists
+          if (data.logo_url) {
+            setLogoPreview(data.logo_url);
+          }
         }
       } catch (error) {
         console.error("Error loading profile:", error);
@@ -412,6 +423,37 @@ const Upload = () => {
     setIsSaving(true);
 
     try {
+      let logoUrl = profile.logoUrl;
+
+      // Upload logo if a new file was selected
+      if (logoFile) {
+        const fileExt = logoFile.name.split('.').pop();
+        const fileName = `${user.id}/logo.${fileExt}`;
+
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from('logos')
+          .upload(fileName, logoFile, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error('Logo upload error:', uploadError);
+          // Continue without logo if storage isn't set up
+          toast({
+            title: "Logo upload skipped",
+            description: "Storage not configured. Profile saved without logo.",
+          });
+        } else {
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('logos')
+            .getPublicUrl(fileName);
+          logoUrl = urlData.publicUrl;
+        }
+      }
+
       // Check if profile exists
       const { data: existing } = await supabase
         .from("business_profiles")
@@ -428,6 +470,7 @@ const Upload = () => {
         num_employees: profile.employees ? parseInt(profile.employees) : null,
         num_sites: profile.sites ? parseInt(profile.sites) : null,
         business_type: profile.businessType,
+        logo_url: logoUrl,
         building_type: profile.buildingType,
         operating_hours: profile.operatingHours,
         energy_sources: profile.energySources,
@@ -459,6 +502,12 @@ const Upload = () => {
 
       if (error) {
         throw error;
+      }
+
+      // Update local state with the new logo URL
+      if (logoUrl !== profile.logoUrl) {
+        setProfile(prev => ({ ...prev, logoUrl }));
+        setLogoFile(null); // Clear the file after successful upload
       }
 
       toast({
@@ -512,6 +561,13 @@ const Upload = () => {
               contactEmail={profile.contactEmail}
               industry={profile.industry}
               sites={profile.sites}
+              logoUrl={logoPreview || profile.logoUrl}
+              scenarioProgress={activeScenario ? {
+                name: activeScenario.name,
+                targetReduction: activeScenario.target_reduction ?? 20,
+                actualReduction: latestEmissions ? Math.max(0, ((latestEmissions.total_emissions ?? 0) > 0 ? 5 : 0)) : 0,
+                status: 'on-track',
+              } : null}
             />
           </div>
 
@@ -890,6 +946,88 @@ const Upload = () => {
                   </div>
                 </div>
               </div>
+            </section>
+
+            {/* Active Scenario Section */}
+            <section className="bg-card rounded-2xl border border-border p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-display font-bold text-foreground">
+                    Active Scenario
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Your current reduction plan from the Planner
+                  </p>
+                </div>
+                <Link to="/reduction-planner">
+                  <Button variant="outline" size="sm">
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Planner
+                  </Button>
+                </Link>
+              </div>
+
+              {activeScenario ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-foreground">{activeScenario.name}</h3>
+                      <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                        {activeScenario.is_active ? 'Active' : 'Saved'}
+                      </span>
+                    </div>
+                    {activeScenario.description && (
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {activeScenario.description}
+                      </p>
+                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Target Reduction</p>
+                        <p className="text-lg font-bold text-primary">
+                          {activeScenario.target_reduction ?? 20}%
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Target Year</p>
+                        <p className="text-lg font-bold text-foreground">
+                          {activeScenario.target_year ?? 2030}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="flex gap-3">
+                    <Link to="/reduction-planner" className="flex-1">
+                      <Button variant="outline" className="w-full h-10">
+                        Edit Scenario
+                      </Button>
+                    </Link>
+                    <Link to="/dashboard" className="flex-1">
+                      <Button className="w-full h-10 gradient-primary">
+                        Track Progress
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-muted/30 rounded-xl p-6 border border-dashed border-border text-center">
+                  <Target className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                  <h3 className="font-medium text-foreground mb-2">No Active Scenario</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create a reduction scenario in the Planner to track your sustainability goals.
+                  </p>
+                  <Link to="/reduction-planner">
+                    <Button className="gradient-primary">
+                      Create Scenario
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </section>
 
             {/* Insights & Recommendations Section */}

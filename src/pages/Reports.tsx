@@ -29,6 +29,48 @@ interface EmissionCategory {
   percentage: number;
 }
 
+// Placeholder demo data when no real data exists
+const DEMO_REPORTS = [
+  {
+    id: 'demo-1',
+    report_period: 'Q4 2024',
+    total_emissions: 0,
+    scope1_total: 0,
+    scope2_total: 0,
+    scope3_total: 0,
+    electricity_emissions: 0,
+    gas_emissions: 0,
+    flights_emissions: 0,
+    water_emissions: 0,
+    waste_emissions: 0,
+    fuel_emissions: 0,
+    created_at: new Date().toISOString(),
+    period_start: '2024-10-01',
+    period_end: '2024-12-31',
+    source_file: null,
+    isDemo: true,
+  },
+  {
+    id: 'demo-2',
+    report_period: 'Q3 2024',
+    total_emissions: 0,
+    scope1_total: 0,
+    scope2_total: 0,
+    scope3_total: 0,
+    electricity_emissions: 0,
+    gas_emissions: 0,
+    flights_emissions: 0,
+    water_emissions: 0,
+    waste_emissions: 0,
+    fuel_emissions: 0,
+    created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+    period_start: '2024-07-01',
+    period_end: '2024-09-30',
+    source_file: null,
+    isDemo: true,
+  },
+];
+
 const Reports = () => {
   const { user, loading: authLoading } = useAuth();
   const { emissions, latestEmissions, isLoading: emissionsLoading, getCategoryData } = useEmissions(user?.id);
@@ -39,10 +81,14 @@ const Reports = () => {
   const isLoading = authLoading || emissionsLoading;
   const hasReports = emissions && emissions.length > 0;
 
+  // Use real data if available, otherwise show demo placeholders
+  const displayReports = hasReports ? emissions : DEMO_REPORTS;
+  const displayLatest = hasReports ? latestEmissions : DEMO_REPORTS[0];
+
   // Get the selected report data
   const selectedReport = selectedReportId
-    ? emissions.find(e => e.id === selectedReportId)
-    : latestEmissions;
+    ? displayReports.find(e => e.id === selectedReportId)
+    : displayLatest;
 
   // Generate categories from selected report
   const getCategories = (): EmissionCategory[] => {
@@ -66,6 +112,7 @@ const Reports = () => {
 
   const categories = getCategories();
   const totalEmissions = selectedReport?.total_emissions ?? 0;
+  const isPlaceholderData = !hasReports;
 
   const handlePrint = () => {
     window.print();
@@ -211,33 +258,6 @@ const Reports = () => {
     );
   }
 
-  // No reports state
-  if (!hasReports) {
-    return (
-      <div className="min-h-screen bg-background">
-        <AppHeader />
-        <main className="container mx-auto px-4 pt-24 pb-8">
-          <Card className="max-w-lg mx-auto shadow-lg">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Upload className="h-8 w-8 text-primary" />
-              </div>
-              <h2 className="text-xl font-semibold text-foreground mb-2">
-                No reports available
-              </h2>
-              <p className="text-muted-foreground mb-6">
-                Upload emissions data to generate your first report
-              </p>
-              <Button asChild className="gradient-primary">
-                <Link to="/file-upload">Go to Upload</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -256,6 +276,16 @@ const Reports = () => {
             <AlertCircle className="h-4 w-4 text-amber-600" />
             <AlertDescription className="text-amber-800 dark:text-amber-200">
               <Link to="/auth" className="underline font-medium">Sign in</Link> to view your saved reports.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isPlaceholderData && (
+          <Alert className="mb-6 border-primary/30 bg-primary/5">
+            <Upload className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-foreground">
+              <span className="font-medium">No emissions data yet.</span> These are placeholder reports.{" "}
+              <Link to="/file-upload" className="underline font-medium text-primary">Upload your data</Link> to generate real reports.
             </AlertDescription>
           </Alert>
         )}
@@ -281,7 +311,7 @@ const Reports = () => {
 
             <TabsContent value="previous-reports" className="p-6">
               <div className="space-y-4">
-                {emissions.map((report) => (
+                {displayReports.map((report) => (
                   <div
                     key={report.id}
                     className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors gap-4"
@@ -356,10 +386,10 @@ const Reports = () => {
                         Carbon Emissions Report
                       </h2>
                       <p className="text-primary font-medium mt-1">
-                        {latestEmissions?.report_period || 'Current Period'}
+                        {displayLatest?.report_period || 'Current Period'}
                       </p>
                       <p className="text-muted-foreground text-sm mt-1">
-                        Generated on {new Date(latestEmissions?.created_at || new Date()).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        Generated on {new Date(displayLatest?.created_at || new Date()).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </p>
                     </div>
 
@@ -386,7 +416,7 @@ const Reports = () => {
                             Gas, Fuel combustion
                           </p>
                           <p className="text-xl font-bold text-orange-600 mt-2">
-                            {(latestEmissions?.scope1_total ?? 0).toFixed(2)} t CO2e
+                            {(displayLatest?.scope1_total ?? 0).toFixed(2)} t CO2e
                           </p>
                         </div>
                         <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
@@ -395,7 +425,7 @@ const Reports = () => {
                             Electricity, purchased energy
                           </p>
                           <p className="text-xl font-bold text-primary mt-2">
-                            {(latestEmissions?.scope2_total ?? 0).toFixed(2)} t CO2e
+                            {(displayLatest?.scope2_total ?? 0).toFixed(2)} t CO2e
                           </p>
                         </div>
                         <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
@@ -404,7 +434,7 @@ const Reports = () => {
                             Flights, Water, Waste
                           </p>
                           <p className="text-xl font-bold text-purple-600 mt-2">
-                            {(latestEmissions?.scope3_total ?? 0).toFixed(2)} t CO2e
+                            {(displayLatest?.scope3_total ?? 0).toFixed(2)} t CO2e
                           </p>
                         </div>
                       </div>

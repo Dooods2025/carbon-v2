@@ -881,9 +881,12 @@ const Dashboard = () => {
                     <div key={scope.label} className="p-3 rounded-lg bg-muted/20 flex items-center justify-between">
                       <span className="font-medium text-foreground">{scope.label}</span>
                       <div className="flex items-center gap-4">
-                        <div className="text-right">
+                        <div className="text-right flex items-center gap-2">
                           <span className="font-bold text-foreground">{scope.key1.toFixed(2)}</span>
-                          <span className="text-xs text-muted-foreground ml-1">vs {scope.key2.toFixed(2)}</span>
+                          <span className="text-xs text-muted-foreground">({compareYear1})</span>
+                          <span className="text-xs text-muted-foreground">vs</span>
+                          <span className="text-muted-foreground">{scope.key2.toFixed(2)}</span>
+                          <span className="text-xs text-muted-foreground">({compareYear2})</span>
                         </div>
                         <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                           change > 0
