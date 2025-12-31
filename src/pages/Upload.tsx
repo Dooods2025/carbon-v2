@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import AppHeader from "@/components/AppHeader";
-import BusinessProfileSidebar from "@/components/BusinessProfileSidebar";
 import EmissionsSummaryCards from "@/components/EmissionsSummaryCards";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmissions } from "@/hooks/useEmissions";
@@ -551,34 +550,54 @@ const Upload = () => {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="container mx-auto px-4 py-12 pt-28">
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
-          {/* Sidebar - shows after form on mobile */}
-          <div className="order-2 lg:order-1">
-            <BusinessProfileSidebar
-              companyName={profile.companyName}
-              abn={profile.abn}
-              contactEmail={profile.contactEmail}
-              industry={profile.industry}
-              sites={profile.sites}
-              logoUrl={logoPreview || profile.logoUrl}
-              scenarioProgress={activeScenario ? {
-                name: activeScenario.name,
-                targetReduction: activeScenario.target_reduction ?? 20,
-                actualReduction: latestEmissions ? Math.max(0, ((latestEmissions.total_emissions ?? 0) > 0 ? 5 : 0)) : 0,
-                status: 'on-track',
-              } : null}
-            />
-          </div>
-
-          {/* Main Form - shows first on mobile */}
-          <div className="order-1 lg:order-2 space-y-8">
+      <main className="container mx-auto px-4 py-12 pt-28 max-w-5xl">
+        <div className="space-y-8">
             {/* Emissions Summary Cards */}
             <EmissionsSummaryCards
               totalEmissions={latestEmissions?.total_emissions ?? 0}
               scope1Emissions={latestEmissions?.scope1_total ?? 0}
               scope2Emissions={latestEmissions?.scope2_total ?? 0}
+              scope3Emissions={latestEmissions?.scope3_total ?? 0}
             />
+
+            {/* Milestone Progress Line */}
+            {activeScenario && (
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-foreground">Reduction Journey</h3>
+                  <span className="text-primary font-bold">
+                    {activeScenario.reduction_percentage?.toFixed(1) ?? 0}% Target
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Overall Progress</span>
+                    <span className="text-primary font-medium">
+                      {Math.min(100, ((latestEmissions?.total_emissions ?? 0) > 0 ?
+                        Math.max(0, ((activeScenario.baseline_emissions ?? 224) - (latestEmissions?.total_emissions ?? 0)) /
+                        ((activeScenario.baseline_emissions ?? 224) - (activeScenario.target_emissions ?? 180)) * 100) : 0
+                      )).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-primary to-green-500 rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(100, ((latestEmissions?.total_emissions ?? 0) > 0 ?
+                          Math.max(0, ((activeScenario.baseline_emissions ?? 224) - (latestEmissions?.total_emissions ?? 0)) /
+                          ((activeScenario.baseline_emissions ?? 224) - (activeScenario.target_emissions ?? 180)) * 100) : 0
+                        ))}%`
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{(activeScenario.baseline_emissions ?? 224).toFixed(2)}t CO2e (Baseline)</span>
+                    <span>{(latestEmissions?.total_emissions ?? 0).toFixed(2)}t CO2e (Current)</span>
+                    <span>{(activeScenario.target_emissions ?? 180).toFixed(2)}t CO2e (Target)</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Essential Info Section */}
             <section id="essential-info" className="bg-card rounded-2xl border border-border p-6 md:p-8">
@@ -594,8 +613,42 @@ const Upload = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
+              {/* Company Name with Logo */}
+              <div className="flex items-start gap-4 mb-6 p-4 rounded-xl bg-muted/30 border border-border">
+                <div
+                  className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-dashed border-border hover:border-primary transition-colors cursor-pointer flex items-center justify-center bg-white shrink-0"
+                  onClick={() => logoInputRef.current?.click()}
+                >
+                  {logoPreview || profile.logoUrl ? (
+                    <>
+                      <img
+                        src={logoPreview || profile.logoUrl}
+                        alt="Company logo"
+                        className="w-full h-full object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeLogo();
+                        }}
+                        className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </>
+                  ) : (
+                    <ImagePlus className="w-6 h-6 text-muted-foreground" />
+                  )}
+                </div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoSelect}
+                  className="hidden"
+                />
+                <div className="flex-1 space-y-2">
                   <Label htmlFor="companyName">Company Name</Label>
                   <Input
                     id="companyName"
@@ -604,8 +657,11 @@ const Upload = () => {
                     onChange={(e) => handleChange("companyName", e.target.value)}
                     className="h-12"
                   />
+                  <p className="text-xs text-muted-foreground">Click the icon to upload your company logo</p>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="abn">ABN</Label>
                   <Input
@@ -617,62 +673,7 @@ const Upload = () => {
                   />
                 </div>
 
-                {/* Company Logo Upload */}
-                <div className="md:col-span-2 space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <ImagePlus className="w-4 h-4" />
-                    Company Logo
-                  </Label>
-                  <div className="flex items-center gap-4">
-                    {/* Logo Preview */}
-                    {(logoPreview || profile.logoUrl) ? (
-                      <div className="relative">
-                        <div className="w-20 h-20 rounded-lg border-2 border-primary/20 overflow-hidden bg-muted flex items-center justify-center">
-                          <img
-                            src={logoPreview || profile.logoUrl}
-                            alt="Company logo"
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={removeLogo}
-                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
-                        <ImagePlus className="w-8 h-8 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <input
-                        ref={logoInputRef}
-                        type="file"
-                        accept="image/png,image/jpeg,image/svg+xml"
-                        onChange={handleLogoSelect}
-                        className="hidden"
-                        id="logo-upload"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => logoInputRef.current?.click()}
-                        className="w-full h-12"
-                      >
-                        <UploadIcon className="w-4 h-4 mr-2" />
-                        {(logoPreview || profile.logoUrl) ? "Change Logo" : "Upload Logo"}
-                      </Button>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        PNG, JPG or SVG (max 2MB)
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="md:col-span-2 space-y-2">
+                <div className="space-y-2">
                   <Label htmlFor="contactEmail">Company Contact Email</Label>
                   <Input
                     id="contactEmail"
@@ -1179,7 +1180,6 @@ const Upload = () => {
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
-          </div>
         </div>
       </main>
     </div>

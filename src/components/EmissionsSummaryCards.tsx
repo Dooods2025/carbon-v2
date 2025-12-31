@@ -1,15 +1,17 @@
-import { Flame, Zap, BarChart3 } from "lucide-react";
+import { Flame, Zap, BarChart3, Globe } from "lucide-react";
 
 interface EmissionsSummaryCardsProps {
   totalEmissions?: number;
   scope1Emissions?: number;
   scope2Emissions?: number;
+  scope3Emissions?: number;
 }
 
 const EmissionsSummaryCards = ({
   totalEmissions = 0,
   scope1Emissions = 0,
   scope2Emissions = 0,
+  scope3Emissions = 0,
 }: EmissionsSummaryCardsProps) => {
   const cards = [
     {
@@ -38,10 +40,19 @@ const EmissionsSummaryCards = ({
       iconColor: "text-emerald-500",
       subtitle: "Indirect emissions",
     },
+    {
+      title: "Scope 3",
+      value: scope3Emissions,
+      unit: "CO2e",
+      icon: Globe,
+      bgColor: "bg-purple-100",
+      iconColor: "text-purple-500",
+      subtitle: "Value chain",
+    },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       {cards.map((card) => (
         <div
           key={card.title}
