@@ -291,20 +291,20 @@ const Reports = () => {
         )}
 
         <Card className="shadow-lg">
-          <Tabs defaultValue="previous-reports" className="w-full">
+          <Tabs defaultValue="full-report" className="w-full">
             <div className="border-b">
               <TabsList className="h-12 w-full justify-start rounded-none bg-transparent p-0">
-                <TabsTrigger
-                  value="previous-reports"
-                  className="relative h-12 rounded-none border-b-2 border-transparent px-6 font-medium text-muted-foreground transition-all data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary hover:text-foreground"
-                >
-                  Previous Reports
-                </TabsTrigger>
                 <TabsTrigger
                   value="full-report"
                   className="relative h-12 rounded-none border-b-2 border-transparent px-6 font-medium text-muted-foreground transition-all data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary hover:text-foreground"
                 >
                   Current Report
+                </TabsTrigger>
+                <TabsTrigger
+                  value="previous-reports"
+                  className="relative h-12 rounded-none border-b-2 border-transparent px-6 font-medium text-muted-foreground transition-all data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary hover:text-foreground"
+                >
+                  Previous Reports
                 </TabsTrigger>
               </TabsList>
             </div>
