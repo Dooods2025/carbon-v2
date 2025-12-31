@@ -463,9 +463,10 @@ const Upload = () => {
         .eq("user_id", user.id)
         .single();
 
-      const profileData = {
+      // Note: first_name field requires adding column to Supabase
+      // ALTER TABLE business_profiles ADD COLUMN first_name TEXT;
+      const profileData: Record<string, unknown> = {
         user_id: user.id,
-        first_name: profile.firstName,
         company_name: profile.companyName,
         abn: profile.abn,
         contact_email: profile.contactEmail,
@@ -567,16 +568,16 @@ const Upload = () => {
             </div>
 
             {/* News & Updates Panel */}
-            <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl p-4 flex items-center gap-4">
+            <div className="bg-gradient-to-r from-stone-100 to-stone-50 dark:from-stone-800 dark:to-stone-700 rounded-2xl p-4 flex items-center gap-4 border border-stone-200 dark:border-stone-600">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Latest</span>
+                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">Latest</span>
                 </div>
-                <p className="text-white text-sm">
+                <p className="text-stone-700 dark:text-stone-200 text-sm">
                   NGERS reporting deadline approaching. Ensure your Q4 data is uploaded by February 28th for compliance.
                 </p>
               </div>
-              <div className="hidden sm:flex flex-col gap-2 text-xs text-slate-300">
+              <div className="hidden sm:flex flex-col gap-2 text-xs text-stone-600 dark:text-stone-300">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                   <span>2 data gaps detected</span>

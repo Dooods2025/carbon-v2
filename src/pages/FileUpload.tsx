@@ -201,15 +201,26 @@ const FileUpload = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Calculator returned error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error("n8n webhook error:", response.status, errorText);
+        throw new Error(`Calculator returned error: ${response.status}. The n8n workflow may be inactive or misconfigured.`);
       }
 
       // Parse the response from n8n
-      const result: EmissionsResult = await response.json();
+      let result: EmissionsResult;
+      const responseText = await response.text();
+
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse n8n response:", responseText);
+        throw new Error("Invalid response from calculator. The n8n workflow returned non-JSON data. Please check your n8n workflow is active and returning valid JSON.");
+      }
 
       // Validate we got emissions data back
       if (!result || typeof result.total_emissions === "undefined") {
-        throw new Error("Invalid response from calculator. Please check your file format.");
+        console.error("Missing total_emissions in response:", result);
+        throw new Error("Calculator did not return emissions data. Please verify your n8n workflow is processing the file correctly and returning total_emissions.");
       }
 
       // Save results to Supabase
