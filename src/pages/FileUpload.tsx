@@ -38,11 +38,11 @@ interface EmissionsResult {
   site_breakdown?: Record<string, number>;
 }
 
-// Generate quarterly period options (Q1 2022 - Q4 2026)
+// Generate quarterly period options (Q4 2026 - Q1 2022, newer dates at top)
 const getQuarterlyOptions = () => {
   const options = [];
-  for (let year = 2022; year <= 2026; year++) {
-    for (let q = 1; q <= 4; q++) {
+  for (let year = 2026; year >= 2022; year--) {
+    for (let q = 4; q >= 1; q--) {
       options.push(`Q${q} ${year}`);
     }
   }
@@ -503,16 +503,33 @@ const FileUpload = () => {
                   size="sm"
                   className="border-primary text-primary hover:bg-primary/10"
                   onClick={() => {
-                    // Create and download template
-                    const templateUrl = '/emissions-template.xlsx';
+                    // Create CSV template content
+                    const csvContent = `Category,Date,Site,Quantity,Unit
+Electricity,2024-01-15,Head Office,1500,kWh
+Electricity,2024-02-15,Head Office,1450,kWh
+Gas,2024-01-15,Head Office,500,MJ
+Gas,2024-02-15,Head Office,480,MJ
+Fuel,2024-01-15,Fleet,200,Litres
+Flights,2024-01-20,Business Travel,2500,km
+Water,2024-01-15,Head Office,50,kL
+Waste,2024-01-31,Head Office,2,Tonnes`;
+
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
                     const link = document.createElement('a');
-                    link.href = templateUrl;
-                    link.download = 'emissions-template.xlsx';
+                    link.href = url;
+                    link.download = 'emissions-template.csv';
                     link.click();
+                    URL.revokeObjectURL(url);
+
+                    toast({
+                      title: "Template downloaded",
+                      description: "Open the CSV file in Excel to fill in your data.",
+                    });
                   }}
                 >
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  Download Template
+                  Download Template (CSV)
                 </Button>
               </div>
               <ul className="text-sm text-primary space-y-2 ml-7">

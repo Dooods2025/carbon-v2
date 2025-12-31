@@ -946,7 +946,10 @@ const Dashboard = () => {
         {/* Detailed Emissions Breakdown Table */}
         <Card className="shadow-md">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold">Detailed Emissions Breakdown</CardTitle>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Factory className="h-5 w-5 text-primary" />
+              Detailed Emissions Breakdown
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -1006,82 +1009,161 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Active Scenario Section */}
-        {(activeScenario || scenarios.length > 0) && (
-          <Card className="shadow-md hover:shadow-lg transition-shadow mt-8">
-            <CardHeader className="pb-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <Target className="h-5 w-5 text-primary" />
-                  Reduction Scenarios
-                </CardTitle>
-                <Button asChild variant="outline" size="sm">
-                  <Link to="/reduction-planner">
-                    View All Scenarios
-                  </Link>
+        {/* Current Reduction Scenario with Milestone Tracker */}
+        <Card className="shadow-md hover:shadow-lg transition-shadow mt-8">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                Current Reduction Scenario
+              </CardTitle>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/reduction-planner">
+                  Manage Scenarios
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {activeScenario ? (
+              <div className="space-y-6">
+                {/* Scenario Header */}
+                <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Active Scenario</p>
+                    <p className="text-lg font-semibold text-foreground">{activeScenario.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Target Reduction</p>
+                    <p className="text-2xl font-bold text-primary">
+                      {activeScenario.reduction_percentage?.toFixed(1) ?? 0}%
+                    </p>
+                  </div>
+                </div>
+
+                {/* Reduction Journey Progress */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-foreground">Reduction Journey</span>
+                    <span className="text-primary font-bold">
+                      {Math.min(100, Math.max(0, ((activeScenario.baseline_emissions ?? 224) - (latestEmissions?.total_emissions ?? activeScenario.baseline_emissions ?? 224)) /
+                        ((activeScenario.baseline_emissions ?? 224) - (activeScenario.target_emissions ?? 180)) * 100)).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-primary to-green-500 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(100, Math.max(0, ((activeScenario.baseline_emissions ?? 224) - (latestEmissions?.total_emissions ?? activeScenario.baseline_emissions ?? 224)) /
+                            ((activeScenario.baseline_emissions ?? 224) - (activeScenario.target_emissions ?? 180)) * 100))}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{(activeScenario.baseline_emissions ?? 224).toFixed(2)}t CO2e (Baseline)</span>
+                    <span>{(latestEmissions?.total_emissions ?? 0).toFixed(2)}t CO2e (Current)</span>
+                    <span>{(activeScenario.target_emissions ?? 180).toFixed(2)}t CO2e (Target)</span>
+                  </div>
+                </div>
+
+                {/* Reduction Milestones */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-foreground">Reduction Milestones</h4>
+                  <div className="relative">
+                    {/* Timeline line */}
+                    <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
+
+                    {/* Milestone items */}
+                    {[
+                      { percent: 10, target: (activeScenario.baseline_emissions ?? 224) * 0.9, actions: ['LED upgrades', 'Recycling program'], date: '2025-06-15' },
+                      { percent: 20, target: (activeScenario.baseline_emissions ?? 224) * 0.8, actions: ['Solar installation', 'EV fleet'], date: '2025-12-31' },
+                      { percent: 30, target: (activeScenario.baseline_emissions ?? 224) * 0.7, actions: ['Energy audit', 'Green procurement'], date: '2026-06-30' },
+                      { percent: 40, target: (activeScenario.baseline_emissions ?? 224) * 0.6, actions: ['Building optimisation', 'Carbon offset'], date: '2026-12-31' },
+                    ].map((milestone, idx) => {
+                      const currentEmissions = latestEmissions?.total_emissions ?? activeScenario.baseline_emissions ?? 224;
+                      const achieved = currentEmissions <= milestone.target;
+                      const progress = ((activeScenario.baseline_emissions ?? 224) - currentEmissions) / (activeScenario.baseline_emissions ?? 224) * 100;
+                      const inProgress = !achieved && progress >= (milestone.percent - 10);
+
+                      return (
+                        <div key={milestone.percent} className="relative flex gap-4 pb-6 last:pb-0">
+                          {/* Milestone dot */}
+                          <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                            achieved
+                              ? 'bg-green-500 text-white'
+                              : inProgress
+                              ? 'bg-primary/20 border-2 border-primary animate-pulse'
+                              : 'bg-muted border-2 border-border'
+                          }`}>
+                            {achieved && (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+
+                          {/* Milestone content */}
+                          <div className={`flex-1 p-4 rounded-xl border ${
+                            achieved
+                              ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
+                              : 'bg-card border-border'
+                          }`}>
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <h5 className="font-semibold text-foreground">{milestone.percent}% Reduction</h5>
+                                <p className="text-sm text-muted-foreground">{milestone.target.toFixed(2)}t CO2e target</p>
+                                <p className="text-xs text-muted-foreground mt-1">Target Date: {milestone.date}</p>
+                                {achieved && <p className="text-xs text-green-600 font-medium mt-1">✓ Completed</p>}
+                              </div>
+                              <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                                achieved
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                  : inProgress
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}>
+                                {achieved ? 'Achieved' : inProgress ? 'In Progress' : 'Upcoming'}
+                              </span>
+                            </div>
+                            <div className="mt-3">
+                              <p className="text-xs font-medium text-muted-foreground mb-2">Required Actions:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {milestone.actions.map((action, actionIdx) => (
+                                  <span
+                                    key={actionIdx}
+                                    className={`text-xs px-2 py-1 rounded-full ${
+                                      achieved
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                        : 'bg-muted text-muted-foreground'
+                                    }`}
+                                  >
+                                    {achieved && '✓ '}{action}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4">
+                  No reduction scenario created yet. Create one to track your progress.
+                </p>
+                <Button asChild className="gradient-primary">
+                  <Link to="/reduction-planner">Create Reduction Scenario</Link>
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              {activeScenario ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Active Scenario</p>
-                      <p className="text-lg font-semibold text-foreground">{activeScenario.name}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Target Reduction</p>
-                      <p className="text-2xl font-bold text-primary">
-                        {activeScenario.reduction_percentage?.toFixed(1) ?? 0}%
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="p-3 rounded-lg bg-muted/50">
-                      <p className="text-xs text-muted-foreground">Baseline</p>
-                      <p className="text-lg font-bold text-foreground">
-                        {activeScenario.baseline_emissions?.toFixed(1) ?? 0} t
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/50">
-                      <p className="text-xs text-muted-foreground">Target</p>
-                      <p className="text-lg font-bold text-green-600">
-                        {activeScenario.target_emissions?.toFixed(1) ?? 0} t
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/50">
-                      <p className="text-xs text-muted-foreground">Timeline</p>
-                      <p className="text-lg font-bold text-foreground">
-                        {activeScenario.timeline_months ?? 12} months
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/50">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-3 w-3" /> Target Date
-                      </p>
-                      <p className="text-lg font-bold text-foreground">
-                        {activeScenario.target_date
-                          ? new Date(activeScenario.target_date).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
-                          : 'Not set'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">
-                    No reduction scenarios created yet.
-                  </p>
-                  <Button asChild className="gradient-primary">
-                    <Link to="/reduction-planner">Create Your First Scenario</Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+            )}
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
