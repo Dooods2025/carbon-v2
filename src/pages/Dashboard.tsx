@@ -872,40 +872,46 @@ const Dashboard = () => {
 
                 {/* Scope Comparisons Table */}
                 <div className="rounded-lg border border-border overflow-hidden">
-                  {/* Table Header */}
-                  <div className="grid grid-cols-[1fr,1fr,auto,1fr,auto] bg-muted/50 text-xs font-medium text-muted-foreground">
-                    <div className="p-3">Scope</div>
-                    <div className="p-3 text-center bg-primary/5">{compareYear1}</div>
-                    <div className="w-[2px] bg-border" />
-                    <div className="p-3 text-center">{compareYear2}</div>
-                    <div className="p-3 text-center">Change</div>
-                  </div>
-                  {/* Table Body */}
-                  {[
-                    { label: "Scope 1", key1: year1Data.scope1, key2: year2Data.scope1 },
-                    { label: "Scope 2", key1: year1Data.scope2, key2: year2Data.scope2 },
-                    { label: "Scope 3", key1: year1Data.scope3, key2: year2Data.scope3 },
-                  ].map((scope, idx) => {
-                    const change = calculateChange(scope.key1, scope.key2);
-                    return (
-                      <div key={scope.label} className={`grid grid-cols-[1fr,1fr,auto,1fr,auto] ${idx % 2 === 0 ? 'bg-muted/20' : ''}`}>
-                        <div className="p-3 font-medium text-foreground">{scope.label}</div>
-                        <div className="p-3 text-center font-bold text-foreground bg-primary/5">{scope.key1.toFixed(2)} t</div>
-                        <div className="w-[2px] bg-border" />
-                        <div className="p-3 text-center text-muted-foreground">{scope.key2.toFixed(2)} t</div>
-                        <div className="p-3 flex items-center justify-center">
-                          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                            change > 0
-                              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                              : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                          }`}>
-                            {change > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                            {Math.abs(change).toFixed(1)}%
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-muted/50 text-xs font-medium text-muted-foreground">
+                        <th className="p-3 text-left w-24">Scope</th>
+                        <th className="p-3 text-center bg-primary/5">{compareYear1}</th>
+                        <th className="w-[3px] bg-border"></th>
+                        <th className="p-3 text-center">{compareYear2}</th>
+                        <th className="p-3 text-center w-24">Change</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { label: "Scope 1", key1: year1Data.scope1, key2: year2Data.scope1 },
+                        { label: "Scope 2", key1: year1Data.scope2, key2: year2Data.scope2 },
+                        { label: "Scope 3", key1: year1Data.scope3, key2: year2Data.scope3 },
+                      ].map((scope, idx) => {
+                        const change = calculateChange(scope.key1, scope.key2);
+                        return (
+                          <tr key={scope.label} className={idx % 2 === 0 ? 'bg-muted/20' : ''}>
+                            <td className="p-3 font-medium text-foreground">{scope.label}</td>
+                            <td className="p-3 text-center font-bold text-foreground bg-primary/5">{scope.key1.toFixed(2)} t</td>
+                            <td className="bg-border"></td>
+                            <td className="p-3 text-center text-muted-foreground">{scope.key2.toFixed(2)} t</td>
+                            <td className="p-3">
+                              <div className="flex items-center justify-center">
+                                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                  change > 0
+                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                }`}>
+                                  {change > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                  {Math.abs(change).toFixed(1)}%
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
