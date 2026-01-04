@@ -236,8 +236,30 @@ const FileUpload = () => {
           }
         }
 
-        result = parsed;
-        console.log("Parsed emissions result:", result);
+        // Map n8n camelCase response to our snake_case interface
+        // n8n returns: { totalEmissions, scopes: { scope1, scope2, scope3 }, emissions: { electricity, gas, ... }, ... }
+        if (parsed.totalEmissions !== undefined || parsed.scopes || parsed.emissions) {
+          console.log("Mapping n8n camelCase response to snake_case");
+          result = {
+            total_emissions: parsed.totalEmissions ?? parsed.total_emissions ?? 0,
+            scope1_total: parsed.scopes?.scope1 ?? parsed.scope1_total ?? 0,
+            scope2_total: parsed.scopes?.scope2 ?? parsed.scope2_total ?? 0,
+            scope3_total: parsed.scopes?.scope3 ?? parsed.scope3_total ?? 0,
+            electricity_emissions: parsed.emissions?.electricity ?? parsed.electricity_emissions ?? 0,
+            gas_emissions: parsed.emissions?.gas ?? parsed.gas_emissions ?? 0,
+            fuel_emissions: parsed.emissions?.fuel ?? parsed.fuel_emissions ?? 0,
+            flights_emissions: parsed.emissions?.flights ?? parsed.flights_emissions ?? 0,
+            water_emissions: parsed.emissions?.water ?? parsed.water_emissions ?? 0,
+            waste_emissions: parsed.emissions?.waste ?? parsed.waste_emissions ?? 0,
+            report_period: parsed.reportingPeriod ?? parsed.report_period ?? null,
+            period_start: parsed.periodStart ?? parsed.period_start ?? null,
+            period_end: parsed.periodEnd ?? parsed.period_end ?? null,
+            site_breakdown: parsed.sites ?? parsed.site_breakdown ?? null,
+          };
+        } else {
+          result = parsed;
+        }
+        console.log("Mapped emissions result:", result);
       } catch (parseError) {
         console.error("Failed to parse n8n response:", responseText);
         throw new Error(`Invalid response from calculator. Raw response: ${responseText.substring(0, 200)}...`);
