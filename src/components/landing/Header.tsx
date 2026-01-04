@@ -11,7 +11,7 @@ const Header = () => {
             <Leaf className="w-5 h-5 text-primary-foreground" />
           </div>
           <span className="text-xl font-display font-semibold text-foreground">
-            Carbon Emissions Calculator
+            CarbonTrack
           </span>
         </Link>
         

@@ -467,6 +467,7 @@ const Upload = () => {
       // ALTER TABLE business_profiles ADD COLUMN first_name TEXT;
       const profileData: Record<string, unknown> = {
         user_id: user.id,
+        first_name: profile.firstName || null,
         company_name: profile.companyName,
         abn: profile.abn,
         contact_email: profile.contactEmail,
@@ -555,7 +556,7 @@ const Upload = () => {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="container mx-auto px-4 py-12 pt-28 max-w-5xl">
+      <main className="container mx-auto px-4 py-12 pt-28">
         <div className="space-y-6">
             {/* Personalized Greeting */}
             <div className="mb-2">
@@ -568,16 +569,16 @@ const Upload = () => {
             </div>
 
             {/* News & Updates Panel */}
-            <div className="bg-gradient-to-r from-stone-100 to-stone-50 dark:from-stone-800 dark:to-stone-700 rounded-2xl p-4 flex items-center gap-4 border border-stone-200 dark:border-stone-600">
+            <div className="bg-gradient-to-r from-stone-200 to-stone-100 dark:from-stone-700 dark:to-stone-600 rounded-2xl p-4 flex items-center gap-4 border border-stone-300 dark:border-stone-500 shadow-sm">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">Latest</span>
+                  <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-medium">Latest</span>
                 </div>
-                <p className="text-stone-700 dark:text-stone-200 text-sm">
+                <p className="text-stone-800 dark:text-stone-100 text-sm font-medium">
                   NGERS reporting deadline approaching. Ensure your Q4 data is uploaded by February 28th for compliance.
                 </p>
               </div>
-              <div className="hidden sm:flex flex-col gap-2 text-xs text-stone-600 dark:text-stone-300">
+              <div className="hidden sm:flex flex-col gap-2 text-xs text-stone-700 dark:text-stone-200">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                   <span>2 data gaps detected</span>

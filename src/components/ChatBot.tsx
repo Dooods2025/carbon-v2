@@ -33,11 +33,26 @@ const ChatBot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Clear chat when user signs in (new session)
+  useEffect(() => {
+    if (user) {
+      setMessages([
+        {
+          id: "welcome",
+          content: "G'day! I'm your Carbon Emissions Assistant. I can help you with:\n\n• Understanding your emissions data\n• Tips to reduce your carbon footprint\n• NGERS reporting guidance\n• Sustainability strategies\n• Industry benchmarks\n\nWhat would you like to know?",
+          role: "assistant",
+          timestamp: new Date(),
+        },
+      ]);
+    }
+  }, [user?.id]);
 
   // Build context about user's emissions for more relevant responses
   const buildEmissionsContext = () => {

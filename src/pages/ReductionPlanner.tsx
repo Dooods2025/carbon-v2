@@ -46,6 +46,11 @@ import {
   CheckCircle,
   Clock,
   DollarSign,
+  BarChart3,
+  LineChart as LineChartIcon,
+  Milestone,
+  CheckCircle2,
+  Circle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useScenarios } from "@/hooks/useScenarios";
@@ -102,6 +107,31 @@ const ReductionPlanner = () => {
   const [timeline, setTimeline] = useState("12 months");
   const [isSaving, setIsSaving] = useState(false);
   const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
+  const [completedMilestones, setCompletedMilestones] = useState<Set<string>>(new Set());
+
+  // Reduction milestones
+  const reductionMilestones = [
+    { id: 'energy-audit', label: 'Complete energy audit', impact: '5-10%', category: 'Electricity' },
+    { id: 'led-upgrade', label: 'Upgrade to LED lighting', impact: '3-5%', category: 'Electricity' },
+    { id: 'hvac-optimize', label: 'Optimize HVAC systems', impact: '10-15%', category: 'Electricity' },
+    { id: 'solar-install', label: 'Install solar panels', impact: '20-30%', category: 'Electricity' },
+    { id: 'fleet-electric', label: 'Transition fleet to EV', impact: '40-60%', category: 'Fuel' },
+    { id: 'waste-reduction', label: 'Implement waste reduction program', impact: '15-25%', category: 'Waste' },
+    { id: 'water-recycling', label: 'Install water recycling system', impact: '20-30%', category: 'Water' },
+    { id: 'travel-policy', label: 'Implement virtual meeting policy', impact: '30-50%', category: 'Flights' },
+  ];
+
+  const toggleMilestone = (id: string) => {
+    setCompletedMilestones(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
   const [categories, setCategories] = useState<Category[]>([
     { name: "Electricity", icon: Zap, color: "text-blue-500", bgColor: "bg-blue-100", currentEmissions: 98.32, reduction: 0 },
     { name: "Gas", icon: Flame, color: "text-orange-500", bgColor: "bg-orange-100", currentEmissions: 52.18, reduction: 0 },
@@ -558,7 +588,10 @@ const ReductionPlanner = () => {
             {/* Impact Visualization */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Before vs After Comparison</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Before vs After Comparison
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-[250px]">
@@ -583,7 +616,10 @@ const ReductionPlanner = () => {
             {/* Timeline View */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Projected Timeline ({timeline})</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <LineChartIcon className="h-5 w-5 text-primary" />
+                  Projected Timeline ({timeline})
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-[200px]">
@@ -631,13 +667,16 @@ const ReductionPlanner = () => {
               </CardContent>
             </Card>
 
-            {/* Environmental Impact */}
-            {emissionsReduced > 0 && (
-              <Card className="bg-primary/5 border-primary/20">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">This reduction is equivalent to:</CardTitle>
-                </CardHeader>
-                <CardContent>
+            {/* Environmental Impact - Always show */}
+            <Card className="bg-primary/5 border-primary/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Leaf className="h-5 w-5 text-green-600" />
+                  This reduction is equivalent to:
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {emissionsReduced > 0 ? (
                   <div className="grid grid-cols-3 gap-4">
                     <div className="text-center p-4 bg-background rounded-xl">
                       <TreePine className="h-8 w-8 text-green-600 mx-auto mb-2" />
@@ -655,11 +694,81 @@ const ReductionPlanner = () => {
                       <p className="text-xs text-muted-foreground">homes powered</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p className="text-sm">Adjust the category reduction sliders to see your environmental impact</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
+
+        {/* Reduction Milestones */}
+        <Card className="mt-8">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Milestone className="h-5 w-5 text-primary" />
+              Reduction Milestones
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">Track your progress on key reduction initiatives</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {reductionMilestones.map((milestone) => {
+                const isCompleted = completedMilestones.has(milestone.id);
+                const categoryData = categories.find(c => c.name === milestone.category);
+                return (
+                  <div
+                    key={milestone.id}
+                    onClick={() => toggleMilestone(milestone.id)}
+                    className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all ${
+                      isCompleted
+                        ? 'bg-green-50 border border-green-200 dark:bg-green-950 dark:border-green-800'
+                        : 'bg-muted/30 border border-transparent hover:bg-muted/50'
+                    }`}
+                  >
+                    <button
+                      className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                        isCompleted
+                          ? 'bg-green-500 border-green-500 text-white'
+                          : 'border-muted-foreground/50 hover:border-primary'
+                      }`}
+                    >
+                      {isCompleted && <CheckCircle2 className="h-4 w-4" />}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-medium ${isCompleted ? 'text-green-700 dark:text-green-300 line-through' : 'text-foreground'}`}>
+                        {milestone.label}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {categoryData && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${categoryData.bgColor} ${categoryData.color}`}>
+                            {milestone.category}
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          Potential: {milestone.impact} reduction
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {completedMilestones.size} of {reductionMilestones.length} milestones completed
+              </p>
+              <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-green-500 transition-all duration-300"
+                  style={{ width: `${(completedMilestones.size / reductionMilestones.length) * 100}%` }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Saved Scenarios */}
         <Card className="mt-8">

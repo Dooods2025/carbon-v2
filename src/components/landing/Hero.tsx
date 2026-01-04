@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BarChart3, Leaf, TrendingDown } from "lucide-react";
+import { ArrowRight, Leaf, ClipboardList, FileText, Headphones } from "lucide-react";
 
 const Hero = () => {
   return (
@@ -43,21 +43,21 @@ const Hero = () => {
           </div>
         </div>
 
-        {/* Stats cards */}
+        {/* Feature cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20 max-w-4xl mx-auto">
           {[
-            { icon: BarChart3, label: "Emissions Tracked", value: "2M+ tons" },
-            { icon: TrendingDown, label: "Average Reduction", value: "34%" },
-            { icon: Leaf, label: "Active Users", value: "50K+" },
-          ].map((stat, index) => (
+            { icon: ClipboardList, title: "Actionable Plans", subtitle: "Reduction Strategies" },
+            { icon: FileText, title: "Ready-to-Share Reports", subtitle: "PDF Reports" },
+            { icon: Headphones, title: "Expert Support", subtitle: "Talk to a WHS Consultant" },
+          ].map((feature, index) => (
             <div
-              key={stat.label}
-              className="bg-card border border-border rounded-2xl p-6 text-center shadow-sm animate-scale-in"
+              key={feature.title}
+              className="bg-accent rounded-2xl p-6 text-center shadow-sm animate-scale-in"
               style={{ animationDelay: `${0.4 + index * 0.1}s` }}
             >
-              <stat.icon className="w-8 h-8 text-primary mx-auto mb-3" />
-              <p className="text-3xl font-bold text-foreground mb-1">{stat.value}</p>
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
+              <feature.icon className="w-8 h-8 text-primary mx-auto mb-3" />
+              <p className="text-lg font-bold text-foreground mb-1">{feature.title}</p>
+              <p className="text-sm text-accent-foreground">{feature.subtitle}</p>
             </div>
           ))}
         </div>
