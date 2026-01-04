@@ -16,8 +16,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
-// n8n webhook URL for carbon calculator
-const N8N_CALCULATOR_WEBHOOK = "https://dgledhill.app.n8n.cloud/webhook/50b6281b-c102-4135-90e4-c81d725e6f7f";
+// Use Vercel API proxy to avoid CORS issues with n8n
+// Falls back to direct n8n call for local development
+const N8N_CALCULATOR_WEBHOOK = import.meta.env.DEV
+  ? "https://dgledhill.app.n8n.cloud/webhook/50b6281b-c102-4135-90e4-c81d725e6f7f"
+  : "/api/calculate-emissions";
 
 type UploadStatus = "idle" | "uploading" | "processing" | "saving" | "success" | "error";
 
