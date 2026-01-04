@@ -11,7 +11,7 @@ const Footer = () => {
               <Leaf className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-display font-semibold text-foreground">
-              Carbon Emissions Calculator
+              CarbonTrack
             </span>
           </div>
           
@@ -19,7 +19,7 @@ const Footer = () => {
         
         <div className="border-t border-border mt-8 pt-8 text-center">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Carbon Emissions Calculator. All rights reserved.
+            © {new Date().getFullYear()} CarbonTrack. All rights reserved.
           </p>
         </div>
       </div>

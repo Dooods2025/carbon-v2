@@ -40,6 +40,7 @@ import {
   AlertCircle,
   Target,
   Calendar,
+  Scale,
 } from "lucide-react";
 import { useScenarios } from "@/hooks/useScenarios";
 import {
@@ -425,10 +426,11 @@ const Dashboard = () => {
       <main className="container mx-auto px-4 py-8 pt-24">
         {/* Demo data banner */}
         {!hasRealData && (
-          <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
-            <AlertCircle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800 dark:text-amber-200">
-              Showing demo data. <Link to="/file-upload" className="underline font-medium">Upload your data</Link> to see your real emissions.
+          <Alert className="mb-6 border-primary/30 bg-primary/5">
+            <Upload className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-foreground">
+              <span className="font-medium">Showing demo data.</span>{" "}
+              <Link to="/file-upload" className="underline font-medium text-primary">Upload your data</Link> to see your real emissions.
             </AlertDescription>
           </Alert>
         )}
@@ -760,32 +762,68 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Top Three Emissions Sources */}
+          {/* Industry Benchmarking */}
           <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold">Top Three Emissions Sources</CardTitle>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Scale className="h-5 w-5 text-primary" />
+                Industry Benchmarking
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {topSources.map((source, index) => {
-                  const IconComponent = source.icon;
-                  return (
-                    <div key={source.name} className="flex items-center gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold text-sm">
-                        {index + 1}
-                      </div>
-                      <div className={`w-10 h-10 rounded-lg ${source.bgColor} flex items-center justify-center`}>
-                        <IconComponent className={`h-5 w-5 ${source.color}`} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{source.name}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-foreground">{source.emissions.toFixed(2)} t CO2e</p>
-                      </div>
-                    </div>
-                  );
-                })}
+              <p className="text-sm text-muted-foreground mb-4">Your emissions vs industry average</p>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      { name: 'Scope 1', yours: scope1Value, industry: 92.5 },
+                      { name: 'Scope 2', yours: scope2Value, industry: 105.2 },
+                      { name: 'Scope 3', yours: scope3Value, industry: 48.8 },
+                    ]}
+                    layout="vertical"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis
+                      type="number"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                      tickFormatter={(value) => `${value}t`}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                      width={60}
+                    />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`${value.toFixed(2)} t CO2e`, name === 'yours' ? 'Your Business' : 'Industry Avg']}
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Legend
+                      formatter={(value) => value === 'yours' ? 'Your Business' : 'Industry Average'}
+                    />
+                    <Bar dataKey="yours" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="industry" fill="hsl(var(--muted-foreground))" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <p className="text-sm text-foreground">
+                  <span className="font-medium">
+                    {totalEmissionsValue < 246.5 ? '✓ Below' : '↑ Above'}
+                  </span>
+                  {' '}industry average by{' '}
+                  <span className="font-bold text-primary">
+                    {Math.abs(((totalEmissionsValue - 246.5) / 246.5) * 100).toFixed(1)}%
+                  </span>
+                </p>
               </div>
             </CardContent>
           </Card>

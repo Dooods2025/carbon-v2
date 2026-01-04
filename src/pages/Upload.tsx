@@ -467,6 +467,7 @@ const Upload = () => {
       // ALTER TABLE business_profiles ADD COLUMN first_name TEXT;
       const profileData: Record<string, unknown> = {
         user_id: user.id,
+        first_name: profile.firstName || null,
         company_name: profile.companyName,
         abn: profile.abn,
         contact_email: profile.contactEmail,
@@ -520,9 +521,18 @@ const Upload = () => {
       });
     } catch (error) {
       console.error("Error saving profile:", error);
+      // Extract detailed Supabase error info
+      const supabaseError = error as { message?: string; code?: string; details?: string; hint?: string };
+      const errorDetails = supabaseError.details || supabaseError.hint || supabaseError.message || "Unknown error";
+      console.error("Supabase error details:", {
+        code: supabaseError.code,
+        message: supabaseError.message,
+        details: supabaseError.details,
+        hint: supabaseError.hint,
+      });
       toast({
         title: "Error saving profile",
-        description: error instanceof Error ? error.message : "Please try again.",
+        description: `${errorDetails}. Code: ${supabaseError.code || 'unknown'}`,
         variant: "destructive",
       });
     } finally {
@@ -555,7 +565,7 @@ const Upload = () => {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="container mx-auto px-4 py-12 pt-28 max-w-5xl">
+      <main className="container mx-auto px-4 py-12 pt-28">
         <div className="space-y-6">
             {/* Personalized Greeting */}
             <div className="mb-2">
@@ -568,16 +578,16 @@ const Upload = () => {
             </div>
 
             {/* News & Updates Panel */}
-            <div className="bg-gradient-to-r from-stone-100 to-stone-50 dark:from-stone-800 dark:to-stone-700 rounded-2xl p-4 flex items-center gap-4 border border-stone-200 dark:border-stone-600">
+            <div className="bg-gradient-to-r from-stone-200 to-stone-100 dark:from-stone-700 dark:to-stone-600 rounded-2xl p-4 flex items-center gap-4 border border-stone-300 dark:border-stone-500 shadow-sm">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">Latest</span>
+                  <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-medium">Latest</span>
                 </div>
-                <p className="text-stone-700 dark:text-stone-200 text-sm">
+                <p className="text-stone-800 dark:text-stone-100 text-sm font-medium">
                   NGERS reporting deadline approaching. Ensure your Q4 data is uploaded by February 28th for compliance.
                 </p>
               </div>
-              <div className="hidden sm:flex flex-col gap-2 text-xs text-stone-600 dark:text-stone-300">
+              <div className="hidden sm:flex flex-col gap-2 text-xs text-stone-700 dark:text-stone-200">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                   <span>2 data gaps detected</span>
@@ -1118,15 +1128,51 @@ const Upload = () => {
                   </div>
                 </div>
               ) : (
-                <div className="bg-muted/30 rounded-xl p-6 border border-dashed border-border text-center">
-                  <Target className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                  <h3 className="font-medium text-foreground mb-2">No Active Scenario</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Create a reduction scenario in the Planner to track your sustainability goals.
-                  </p>
-                  <Link to="/reduction-planner">
-                    <Button className="gradient-primary">
-                      Create Scenario
+                <div className="p-4 rounded-xl bg-card border border-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-foreground">Get Started</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Set up your first reduction scenario to track progress
+                      </p>
+                    </div>
+                    <span className="text-xs px-3 py-1.5 rounded-full font-medium bg-amber-100 text-amber-600">
+                      Not Set
+                    </span>
+                  </div>
+
+                  {/* Empty Progress Track */}
+                  <div className="relative mb-4">
+                    <div className="flex justify-between text-xs text-muted-foreground mb-2">
+                      <span>Baseline: --</span>
+                      <span className="font-medium text-muted-foreground">0% Complete</span>
+                      <span>Target: --</span>
+                    </div>
+                    <div className="h-4 bg-muted rounded-full overflow-hidden relative">
+                      <div className="h-full bg-muted-foreground/20 rounded-full w-0" />
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                      <span>Current: -- t CO2e</span>
+                      <span>Set a target to begin tracking</span>
+                    </div>
+                  </div>
+
+                  {/* Stats Grid - Empty State */}
+                  <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border mb-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Target Reduction</p>
+                      <p className="text-lg font-bold text-muted-foreground">--%</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Target Year</p>
+                      <p className="text-lg font-bold text-muted-foreground">----</p>
+                    </div>
+                  </div>
+
+                  <Link to="/reduction-planner" className="block">
+                    <Button className="w-full gradient-primary">
+                      <Target className="w-4 h-4 mr-2" />
+                      Create Your First Scenario
                     </Button>
                   </Link>
                 </div>
