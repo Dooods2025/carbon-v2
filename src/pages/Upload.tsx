@@ -521,9 +521,18 @@ const Upload = () => {
       });
     } catch (error) {
       console.error("Error saving profile:", error);
+      // Extract detailed Supabase error info
+      const supabaseError = error as { message?: string; code?: string; details?: string; hint?: string };
+      const errorDetails = supabaseError.details || supabaseError.hint || supabaseError.message || "Unknown error";
+      console.error("Supabase error details:", {
+        code: supabaseError.code,
+        message: supabaseError.message,
+        details: supabaseError.details,
+        hint: supabaseError.hint,
+      });
       toast({
         title: "Error saving profile",
-        description: error instanceof Error ? error.message : "Please try again.",
+        description: `${errorDetails}. Code: ${supabaseError.code || 'unknown'}`,
         variant: "destructive",
       });
     } finally {

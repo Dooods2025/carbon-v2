@@ -209,18 +209,46 @@ const FileUpload = () => {
       // Parse the response from n8n
       let result: EmissionsResult;
       const responseText = await response.text();
+      console.log("Raw n8n response:", responseText);
 
       try {
-        result = JSON.parse(responseText);
+        let parsed = JSON.parse(responseText);
+
+        // n8n often returns arrays - extract first element if so
+        if (Array.isArray(parsed)) {
+          console.log("n8n returned array with", parsed.length, "elements");
+          parsed = parsed[0];
+        }
+
+        // Check if data is nested under a common key (e.g., { data: {...} }, { json: {...} }, { output: {...} })
+        if (parsed && !parsed.total_emissions && typeof parsed === 'object') {
+          const possibleKeys = ['data', 'json', 'output', 'result', 'body'];
+          for (const key of possibleKeys) {
+            if (parsed[key] && typeof parsed[key] === 'object') {
+              console.log("Extracting from nested key:", key);
+              parsed = parsed[key];
+              break;
+            }
+          }
+          // Handle nested array in these keys
+          if (Array.isArray(parsed)) {
+            parsed = parsed[0];
+          }
+        }
+
+        result = parsed;
+        console.log("Parsed emissions result:", result);
       } catch (parseError) {
         console.error("Failed to parse n8n response:", responseText);
-        throw new Error("Invalid response from calculator. The n8n workflow returned non-JSON data. Please check your n8n workflow is active and returning valid JSON.");
+        throw new Error(`Invalid response from calculator. Raw response: ${responseText.substring(0, 200)}...`);
       }
 
       // Validate we got emissions data back
       if (!result || typeof result.total_emissions === "undefined") {
         console.error("Missing total_emissions in response:", result);
-        throw new Error("Calculator did not return emissions data. Please verify your n8n workflow is processing the file correctly and returning total_emissions.");
+        // Provide more helpful error with the actual response shape
+        const keys = result ? Object.keys(result).join(', ') : 'null';
+        throw new Error(`Calculator response missing total_emissions. Response keys: ${keys}. Check n8n workflow output format.`);
       }
 
       // Save results to Supabase
