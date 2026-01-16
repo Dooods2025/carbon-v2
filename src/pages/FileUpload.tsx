@@ -296,24 +296,33 @@ const FileUpload = () => {
         reportPeriodLabel = `Upload ${new Date().toLocaleDateString()}`;
       }
 
+      // Helper to ensure numeric values (n8n may return strings)
+      const toNumber = (val: unknown): number => {
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') return parseFloat(val) || 0;
+        return 0;
+      };
+
       const { error: saveError } = await supabase
         .from("emissions_data")
         .insert({
           user_id: user.id,
-          electricity_emissions: result.electricity_emissions ?? 0,
-          gas_emissions: result.gas_emissions ?? 0,
-          fuel_emissions: result.fuel_emissions ?? 0,
-          flights_emissions: result.flights_emissions ?? 0,
-          water_emissions: result.water_emissions ?? 0,
-          waste_emissions: result.waste_emissions ?? 0,
-          scope1_total: result.scope1_total ?? 0,
-          scope2_total: result.scope2_total ?? 0,
-          scope3_total: result.scope3_total ?? 0,
-          total_emissions: result.total_emissions ?? 0,
+          electricity_emissions: toNumber(result.electricity_emissions),
+          gas_emissions: toNumber(result.gas_emissions),
+          fuel_emissions: toNumber(result.fuel_emissions),
+          flights_emissions: toNumber(result.flights_emissions),
+          water_emissions: toNumber(result.water_emissions),
+          waste_emissions: toNumber(result.waste_emissions),
+          scope1_total: toNumber(result.scope1_total),
+          scope2_total: toNumber(result.scope2_total),
+          scope3_total: toNumber(result.scope3_total),
+          total_emissions: toNumber(result.total_emissions),
           report_period: reportPeriodLabel,
           period_start: periodStart,
           period_end: periodEnd,
-          site_breakdown: result.site_breakdown ?? null,
+          site_breakdown: typeof result.site_breakdown === 'string' 
+            ? JSON.parse(result.site_breakdown) 
+            : (result.site_breakdown ?? null),
           source_file: file.name,
         });
 
