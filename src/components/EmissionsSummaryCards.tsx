@@ -67,7 +67,7 @@ const EmissionsSummaryCards = ({
             <p className="text-xs text-muted-foreground truncate">{card.title}</p>
             <div className="flex items-baseline gap-1">
               <span className="text-lg font-bold text-foreground">
-                {card.value.toFixed(1)}t
+                {card.value.toFixed(2)}t
               </span>
             </div>
           </div>
