@@ -303,9 +303,7 @@ const FileUpload = () => {
         return 0;
       };
 
-      const { error: saveError } = await supabase
-        .from("emissions_data")
-        .insert({
+      const insertPayload = {
           user_id: user.id,
           electricity_emissions: toNumber(result.electricity_emissions),
           gas_emissions: toNumber(result.gas_emissions),
@@ -317,14 +315,19 @@ const FileUpload = () => {
           scope2_total: toNumber(result.scope2_total),
           scope3_total: toNumber(result.scope3_total),
           total_emissions: toNumber(result.total_emissions),
-          report_period: reportPeriodLabel,
-          period_start: periodStart,
-          period_end: periodEnd,
-          site_breakdown: typeof result.site_breakdown === 'string' 
-            ? JSON.parse(result.site_breakdown) 
+          report_period: reportPeriodLabel ? String(reportPeriodLabel) : null,
+          period_start: periodStart ? String(periodStart) : null,
+          period_end: periodEnd ? String(periodEnd) : null,
+          site_breakdown: typeof result.site_breakdown === 'string'
+            ? JSON.parse(result.site_breakdown)
             : (result.site_breakdown ?? null),
           source_file: file.name,
-        });
+        };
+        console.log("DEBUG: Supabase insert payload:", JSON.stringify(insertPayload, null, 2));
+
+      const { error: saveError } = await supabase
+        .from("emissions_data")
+        .insert(insertPayload);
 
       if (saveError) {
         console.error("Failed to save to Supabase:", saveError);
