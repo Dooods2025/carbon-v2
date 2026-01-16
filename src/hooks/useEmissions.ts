@@ -2,6 +2,16 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { EmissionsData } from '@/types/database';
 
+// Helper to ensure value is a number
+const toNum = (val: unknown): number => {
+  if (typeof val === 'number' && !isNaN(val)) return val;
+  if (typeof val === 'string') {
+    const parsed = parseFloat(val);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
 export function useEmissions(userId: string | undefined) {
   // Fetch all emissions data for user
   const emissionsQuery = useQuery({
@@ -27,12 +37,12 @@ export function useEmissions(userId: string | undefined) {
   const getCategoryData = () => {
     if (!latestEmissions) return [];
     return [
-      { name: 'Electricity', value: latestEmissions.electricity_emissions ?? 0, color: '#3b82f6' },
-      { name: 'Gas', value: latestEmissions.gas_emissions ?? 0, color: '#f59e0b' },
-      { name: 'Fuel', value: latestEmissions.fuel_emissions ?? 0, color: '#ef4444' },
-      { name: 'Flights', value: latestEmissions.flights_emissions ?? 0, color: '#8b5cf6' },
-      { name: 'Water', value: latestEmissions.water_emissions ?? 0, color: '#06b6d4' },
-      { name: 'Waste', value: latestEmissions.waste_emissions ?? 0, color: '#10b981' },
+      { name: 'Electricity', value: toNum(latestEmissions.electricity_emissions), color: '#3b82f6' },
+      { name: 'Gas', value: toNum(latestEmissions.gas_emissions), color: '#f59e0b' },
+      { name: 'Fuel', value: toNum(latestEmissions.fuel_emissions), color: '#ef4444' },
+      { name: 'Flights', value: toNum(latestEmissions.flights_emissions), color: '#8b5cf6' },
+      { name: 'Water', value: toNum(latestEmissions.water_emissions), color: '#06b6d4' },
+      { name: 'Waste', value: toNum(latestEmissions.waste_emissions), color: '#10b981' },
     ];
   };
 
@@ -40,9 +50,9 @@ export function useEmissions(userId: string | undefined) {
   const getScopeData = () => {
     if (!latestEmissions) return [];
     return [
-      { name: 'Scope 1', value: latestEmissions.scope1_total ?? 0, color: '#3b82f6' },
-      { name: 'Scope 2', value: latestEmissions.scope2_total ?? 0, color: '#10b981' },
-      { name: 'Scope 3', value: latestEmissions.scope3_total ?? 0, color: '#f59e0b' },
+      { name: 'Scope 1', value: toNum(latestEmissions.scope1_total), color: '#3b82f6' },
+      { name: 'Scope 2', value: toNum(latestEmissions.scope2_total), color: '#10b981' },
+      { name: 'Scope 3', value: toNum(latestEmissions.scope3_total), color: '#f59e0b' },
     ];
   };
 
@@ -63,10 +73,10 @@ export function useEmissions(userId: string | undefined) {
           total: 0,
         };
       }
-      acc[year].scope1 += record.scope1_total ?? 0;
-      acc[year].scope2 += record.scope2_total ?? 0;
-      acc[year].scope3 += record.scope3_total ?? 0;
-      acc[year].total += record.total_emissions ?? 0;
+      acc[year].scope1 += toNum(record.scope1_total);
+      acc[year].scope2 += toNum(record.scope2_total);
+      acc[year].scope3 += toNum(record.scope3_total);
+      acc[year].total += toNum(record.total_emissions);
       return acc;
     }, {} as Record<string, { year: string; scope1: number; scope2: number; scope3: number; total: number }>);
 

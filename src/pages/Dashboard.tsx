@@ -239,7 +239,7 @@ const Dashboard = () => {
 
     return realData.map(item => ({
       name: item.name,
-      emissions: item.value,
+      emissions: typeof item.value === "number" ? item.value : parseFloat(item.value) || 0,
       fill: colorMap[item.name] || '#6b7280',
     }));
   }, [hasRealData, getCategoryData]);
@@ -329,7 +329,7 @@ const Dashboard = () => {
       const total = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
       return Object.entries(breakdown).map(([name, siteEmissions]) => ({
         name,
-        emissions: siteEmissions,
+        emissions: typeof siteEmissions === "number" ? siteEmissions : parseFloat(String(siteEmissions)) || 0,
         percentage: total > 0 ? (siteEmissions / total) * 100 : 0,
         trend: Math.random() > 0.5 ? "up" as const : "down" as const,
         change: Math.round(Math.random() * 5 * 10) / 10,
