@@ -198,7 +198,7 @@ const FileUpload = () => {
       setStatus("processing");
       setProcessingStep("Calculating emissions...");
 
-      const response = await fetch(N8N_CALCULATOR_WEBHOOK, {
+      const response = await fetch("/api/calculate-emissions", {
         method: "POST",
         body: formData,
       });
