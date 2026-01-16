@@ -324,7 +324,8 @@ const Dashboard = () => {
     }
 
     try {
-      const breakdown = latestEmissions.site_breakdown as Record<string, number>;
+      const rawBreakdown = latestEmissions.site_breakdown;
+      const breakdown = (typeof rawBreakdown === "string" ? JSON.parse(rawBreakdown) : rawBreakdown) as Record<string, number>;
       const total = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
       return Object.entries(breakdown).map(([name, siteEmissions]) => ({
         name,
