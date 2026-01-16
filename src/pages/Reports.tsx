@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmissions } from "@/hooks/useEmissions";
+import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface EmissionCategory {
@@ -76,7 +77,42 @@ const Reports = () => {
   const { emissions, latestEmissions, isLoading: emissionsLoading, getCategoryData } = useEmissions(user?.id);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [userReports, setUserReports] = useState<Record<string, any>>({});
   const reportRef = useRef<HTMLDivElement>(null);
+
+  // Fetch user_reports to get full reportHtml
+  useEffect(() => {
+    const fetchUserReports = async () => {
+      if (!user?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('user_reports')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching user_reports:', error);
+          return;
+        }
+
+        if (data) {
+          // Create a map of filename -> report_data for easy lookup
+          const reportsMap: Record<string, any> = {};
+          data.forEach(report => {
+            reportsMap[report.filename] = report.report_data;
+          });
+          setUserReports(reportsMap);
+          console.log('Loaded user_reports:', Object.keys(reportsMap));
+        }
+      } catch (err) {
+        console.error('Error in fetchUserReports:', err);
+      }
+    };
+
+    fetchUserReports();
+  }, [user?.id]);
 
   const isLoading = authLoading || emissionsLoading;
   const hasReports = emissions && emissions.length > 0;
@@ -124,6 +160,33 @@ const Reports = () => {
       : selectedReport;
 
     if (!report) return;
+
+    // Try to find the full HTML report from user_reports
+    const sourceFile = report.source_file;
+    const fullReportData = sourceFile ? userReports[sourceFile] : null;
+    const reportHtml = fullReportData?.reportHtml;
+
+    console.log('Download PDF - source_file:', sourceFile);
+    console.log('Download PDF - fullReportData keys:', fullReportData ? Object.keys(fullReportData) : 'none');
+    console.log('Download PDF - has reportHtml:', !!reportHtml);
+
+    // If we have the full HTML report from n8n, use it!
+    if (reportHtml) {
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) return;
+
+      printWindow.document.write(reportHtml);
+      printWindow.document.close();
+      printWindow.focus();
+
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+      return;
+    }
+
+    // Fallback: Generate simple summary report if no full HTML available
+    console.log('No reportHtml found, using fallback summary report');
 
     // Create a printable HTML document
     const printWindow = window.open('', '_blank');
