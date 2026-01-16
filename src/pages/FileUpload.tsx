@@ -342,10 +342,15 @@ const FileUpload = () => {
       console.log('DEBUG user_reports: user.id =', user.id);
 
       try {
+        // Get the original parsed response which includes reportHtml
+        // We need to re-parse to get the full response including reportHtml
+        let fullResponse = JSON.parse(responseText);
+        if (Array.isArray(fullResponse)) fullResponse = fullResponse[0];
+
         const userReportPayload = {
           user_id: user.id,
           filename: file.name,
-          report_data: result,  // Store the full n8n response
+          report_data: fullResponse,  // Store the FULL n8n response including reportHtml
         };
         console.log('DEBUG user_reports: Insert payload:', userReportPayload);
 
