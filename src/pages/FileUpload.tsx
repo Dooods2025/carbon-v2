@@ -337,6 +337,33 @@ const FileUpload = () => {
         throw new Error("Failed to save results. Please try again.");
       }
 
+      // Also save to user_reports table for report download feature
+      console.log('DEBUG user_reports: Attempting to save full report...');
+      console.log('DEBUG user_reports: user.id =', user.id);
+
+      try {
+        const userReportPayload = {
+          user_id: user.id,
+          filename: file.name,
+          report_data: result,  // Store the full n8n response
+        };
+        console.log('DEBUG user_reports: Insert payload:', userReportPayload);
+
+        const { error: reportError } = await supabase
+          .from('user_reports')
+          .insert(userReportPayload);
+
+        if (reportError) {
+          console.error('DEBUG user_reports: INSERT ERROR:', reportError);
+          // Don't throw - emissions_data was saved successfully
+        } else {
+          console.log('DEBUG user_reports: INSERT SUCCESS!');
+        }
+      } catch (reportSaveError) {
+        console.error('DEBUG user_reports: CATCH ERROR:', reportSaveError);
+        // Don't throw - emissions_data was saved successfully
+      }
+
       // Success!
       setStatus("success");
       setProcessingStep("");
