@@ -239,29 +239,32 @@ const FileUpload = () => {
           }
         }
 
-        // Map n8n camelCase response to our snake_case interface
-        // n8n returns: { totalEmissions, scopes: { scope1, scope2, scope3 }, emissions: { electricity, gas, ... }, ... }
-        if (parsed.totalEmissions !== undefined || parsed.scopes || parsed.emissions) {
-          console.log("Mapping n8n camelCase response to snake_case");
-          result = {
-            total_emissions: parsed.totalEmissions ?? parsed.total_emissions ?? 0,
-            scope1_total: parsed.scopes?.scope1 ?? parsed.scope1_total ?? 0,
-            scope2_total: parsed.scopes?.scope2 ?? parsed.scope2_total ?? 0,
-            scope3_total: parsed.scopes?.scope3 ?? parsed.scope3_total ?? 0,
-            electricity_emissions: parsed.emissions?.electricity ?? parsed.electricity_emissions ?? 0,
-            gas_emissions: parsed.emissions?.gas ?? parsed.gas_emissions ?? 0,
-            fuel_emissions: parsed.emissions?.fuel ?? parsed.fuel_emissions ?? 0,
-            flights_emissions: parsed.emissions?.flights ?? parsed.flights_emissions ?? 0,
-            water_emissions: parsed.emissions?.water ?? parsed.water_emissions ?? 0,
-            waste_emissions: parsed.emissions?.waste ?? parsed.waste_emissions ?? 0,
-            report_period: parsed.reportingPeriod ?? parsed.report_period ?? null,
-            period_start: parsed.periodStart ?? parsed.period_start ?? null,
-            period_end: parsed.periodEnd ?? parsed.period_end ?? null,
-            site_breakdown: parsed.sites ?? parsed.site_breakdown ?? null,
-          };
-        } else {
-          result = parsed;
-        }
+        // Map n8n response to our snake_case interface
+        // n8n Prepare UI Response returns flat fields: { totalEmissions, electricity, gas, fuel, flights, water, waste, scope1, scope2, scope3, ... }
+        console.log("Mapping n8n response. Keys:", Object.keys(parsed));
+        result = {
+          // Total emissions - try multiple possible field names
+          total_emissions: parsed.totalEmissions ?? parsed.total_emissions ?? 0,
+          
+          // Scope totals - n8n returns flat: scope1, scope2, scope3
+          scope1_total: parsed.scope1 ?? parsed.scopes?.scope1 ?? parsed.scope1_total ?? 0,
+          scope2_total: parsed.scope2 ?? parsed.scopes?.scope2 ?? parsed.scope2_total ?? 0,
+          scope3_total: parsed.scope3 ?? parsed.scopes?.scope3 ?? parsed.scope3_total ?? 0,
+          
+          // Emissions by category - n8n returns flat: electricity, gas, fuel, flights, water, waste
+          electricity_emissions: parsed.electricity ?? parsed.emissions?.electricity ?? parsed.electricity_emissions ?? 0,
+          gas_emissions: parsed.gas ?? parsed.emissions?.gas ?? parsed.gas_emissions ?? 0,
+          fuel_emissions: parsed.fuel ?? parsed.emissions?.fuel ?? parsed.fuel_emissions ?? 0,
+          flights_emissions: parsed.flights ?? parsed.emissions?.flights ?? parsed.flights_emissions ?? 0,
+          water_emissions: parsed.water ?? parsed.emissions?.water ?? parsed.water_emissions ?? 0,
+          waste_emissions: parsed.waste ?? parsed.emissions?.waste ?? parsed.waste_emissions ?? 0,
+          
+          // Metadata
+          report_period: parsed.reportingPeriod ?? parsed.report_period ?? null,
+          period_start: parsed.periodStart ?? parsed.period_start ?? null,
+          period_end: parsed.periodEnd ?? parsed.period_end ?? null,
+          site_breakdown: parsed.site_breakdown ?? parsed.sites ?? null,
+        };
         console.log("Mapped emissions result:", result);
       } catch (parseError) {
         console.error("Failed to parse n8n response:", responseText);
