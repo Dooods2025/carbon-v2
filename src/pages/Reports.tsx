@@ -30,8 +30,29 @@ interface EmissionCategory {
   percentage: number;
 }
 
+// Define a union type for reports that can be real or demo
+type DemoReport = {
+  id: string;
+  report_period: string;
+  total_emissions: number;
+  scope1_total: number;
+  scope2_total: number;
+  scope3_total: number;
+  electricity_emissions: number;
+  gas_emissions: number;
+  flights_emissions: number;
+  water_emissions: number;
+  waste_emissions: number;
+  fuel_emissions: number;
+  created_at: string;
+  period_start: string;
+  period_end: string;
+  source_file: string | null;
+  isDemo: boolean;
+};
+
 // Placeholder demo data when no real data exists
-const DEMO_REPORTS = [
+const DEMO_REPORTS: DemoReport[] = [
   {
     id: 'demo-1',
     report_period: 'Q4 2024',
@@ -296,7 +317,7 @@ const Reports = () => {
     setViewDialogOpen(true);
   };
 
-  const formatReportPeriod = (report: typeof latestEmissions) => {
+  const formatReportPeriod = (report: DemoReport | typeof latestEmissions) => {
     if (!report) return '';
     if (report.period_start && report.period_end) {
       const start = new Date(report.period_start);
