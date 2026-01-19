@@ -466,7 +466,7 @@ const Upload = () => {
       // Note: first_name field requires adding column to Supabase
       // ALTER TABLE business_profiles ADD COLUMN first_name TEXT;
       // Only include fields that exist in the database
-      const profileData: Record<string, unknown> = {
+      const profileData = {
         user_id: user.id,
         first_name: profile.firstName || null,
         company_name: profile.companyName,
