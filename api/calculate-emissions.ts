@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+// n8n webhook URL (configure via N8N_WEBHOOK_URL env var)
+const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
 
-// n8n webhook URL
-const N8N_WEBHOOK_URL = "https://dgledhill.app.n8n.cloud/webhook/50b6281b-c102-4135-90e4-c81d725e6f7f";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
