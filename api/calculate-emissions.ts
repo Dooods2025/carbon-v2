@@ -18,6 +18,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  if (!N8N_WEBHOOK_URL) {
+    console.error('N8N_WEBHOOK_URL environment variable is not set');
+    return res.status(500).json({
+      error: 'Server is not configured',
+      details: 'N8N_WEBHOOK_URL environment variable is not set'
+    });
+  }
+
+
   try {
     // Read the raw body
     const chunks: Buffer[] = [];
