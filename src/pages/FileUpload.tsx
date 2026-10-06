@@ -27,6 +27,7 @@ interface EmissionsResult {
   flights_emissions?: number;
   water_emissions?: number;
   waste_emissions?: number;
+  paper_emissions?: number;
   scope1_total?: number;
   scope2_total?: number;
   scope3_total?: number;
@@ -37,10 +38,13 @@ interface EmissionsResult {
   site_breakdown?: Record<string, number>;
 }
 
-// Generate quarterly period options (Q4 2026 - Q1 2022, newer dates at top)
+// Generate quarterly period options, newest first: from Q4 of next year back to Q1 2022.
+// Rolls forward automatically each January, so future years never need adding by hand.
+const FIRST_REPORTING_YEAR = 2022;
 const getQuarterlyOptions = () => {
   const options = [];
-  for (let year = 2026; year >= 2022; year--) {
+  const lastYear = new Date().getFullYear() + 1;
+  for (let year = lastYear; year >= FIRST_REPORTING_YEAR; year--) {
     for (let q = 4; q >= 1; q--) {
       options.push(`Q${q} ${year}`);
     }
@@ -171,6 +175,24 @@ const FileUpload = () => {
       return;
     }
 
+    // If this quarter already has a report, confirm before replacing it
+    let replaceIds: string[] = [];
+    if (reportingPeriod) {
+      const { data: existing } = await supabase
+        .from("emissions_data")
+        .select("id, source_file")
+        .eq("user_id", user.id)
+        .eq("report_period", reportingPeriod);
+      if (existing && existing.length > 0) {
+        const ok = window.confirm(
+          `${reportingPeriod} already has a report (${existing[0].source_file ?? "previous upload"}).\n\n` +
+          `Replace it with ${file.name}? The old ${reportingPeriod} report will be deleted.`
+        );
+        if (!ok) return;
+        replaceIds = existing.map((r) => r.id);
+      }
+    }
+
     setStatus("uploading");
     setProcessingStep("Uploading file to calculator...");
 
@@ -254,6 +276,7 @@ const FileUpload = () => {
           flights_emissions: parsed.flights ?? parsed.emissions?.flights ?? parsed.flights_emissions ?? 0,
           water_emissions: parsed.water ?? parsed.emissions?.water ?? parsed.water_emissions ?? 0,
           waste_emissions: parsed.waste ?? parsed.emissions?.waste ?? parsed.waste_emissions ?? 0,
+          paper_emissions: parsed.paper ?? parsed.emissions?.paper ?? parsed.paper_emissions ?? 0,
           
           // Metadata
           report_period: parsed.reportingPeriod ?? parsed.report_period ?? null,
@@ -310,6 +333,7 @@ const FileUpload = () => {
           flights_emissions: toNumber(result.flights_emissions),
           water_emissions: toNumber(result.water_emissions),
           waste_emissions: toNumber(result.waste_emissions),
+          paper_emissions: toNumber(result.paper_emissions),
           scope1_total: toNumber(result.scope1_total),
           scope2_total: toNumber(result.scope2_total),
           scope3_total: toNumber(result.scope3_total),
@@ -324,9 +348,11 @@ const FileUpload = () => {
         };
         console.log("DEBUG: Supabase insert payload:", JSON.stringify(insertPayload, null, 2));
 
-      const { error: saveError } = await supabase
+      const { data: savedRecord, error: saveError } = await supabase
         .from("emissions_data")
-        .insert(insertPayload);
+        .insert(insertPayload)
+        .select("id")
+        .single();
 
       if (saveError) {
         console.error("Failed to save to Supabase:", saveError);
@@ -347,6 +373,7 @@ const FileUpload = () => {
           user_id: user.id,
           filename: file.name,
           report_data: fullResponse,  // Store the FULL n8n response including reportHtml
+          emissions_data_id: savedRecord?.id ?? null, // deleting the emissions record also deletes this report
         };
         console.log('DEBUG user_reports: Insert payload:', userReportPayload);
 
@@ -363,6 +390,15 @@ const FileUpload = () => {
       } catch (reportSaveError) {
         console.error('DEBUG user_reports: CATCH ERROR:', reportSaveError);
         // Don't throw - emissions_data was saved successfully
+      }
+
+      // Remove the report(s) this upload replaces (only after the new one saved successfully)
+      if (replaceIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("emissions_data")
+          .delete()
+          .in("id", replaceIds);
+        if (deleteError) console.error("Could not remove replaced report:", deleteError);
       }
 
       // Success!

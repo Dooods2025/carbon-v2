@@ -18,7 +18,19 @@ import {
   Eye,
   Loader2,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmissions } from "@/hooks/useEmissions";
 import { supabase } from "@/lib/supabase";
@@ -95,7 +107,23 @@ const DEMO_REPORTS: DemoReport[] = [
 
 const Reports = () => {
   const { user, loading: authLoading } = useAuth();
-  const { emissions, latestEmissions, isLoading: emissionsLoading, getCategoryData } = useEmissions(user?.id);
+  const { emissions, latestEmissions, isLoading: emissionsLoading, getCategoryData, deleteEmissions, isDeleting } = useEmissions(user?.id);
+  const { toast } = useToast();
+  const [reportToDelete, setReportToDelete] = useState<{ id: string; label: string; file: string | null } | null>(null);
+
+  const confirmDelete = async () => {
+    if (!reportToDelete) return;
+    try {
+      await deleteEmissions(reportToDelete.id);
+      if (selectedReportId === reportToDelete.id) setSelectedReportId(null);
+      toast({ title: "Report deleted", description: `${reportToDelete.label} has been removed and no longer counts on the dashboard.` });
+    } catch (err) {
+      console.error("Delete failed:", err);
+      toast({ title: "Could not delete report", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" });
+    } finally {
+      setReportToDelete(null);
+    }
+  };
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [userReports, setUserReports] = useState<Record<string, any>>({});
@@ -319,12 +347,7 @@ const Reports = () => {
 
   const formatReportPeriod = (report: DemoReport | typeof latestEmissions) => {
     if (!report) return '';
-    if (report.period_start && report.period_end) {
-      const start = new Date(report.period_start);
-      const end = new Date(report.period_end);
-      return `${start.getFullYear()}-${end.getFullYear()} Emission Report`;
-    }
-    return report.report_period || 'Emission Report';
+    return report.report_period ? `${report.report_period} Emissions Report` : 'Emissions Report';
   };
 
   // Loading state
@@ -434,9 +457,44 @@ const Reports = () => {
                         <Download className="h-4 w-4 mr-2" />
                         Download PDF
                       </Button>
+                      {!('isDemo' in report && report.isDemo) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-label={`Delete ${report.report_period || 'report'}`}
+                          onClick={() => setReportToDelete({ id: report.id, label: report.report_period || 'This report', file: report.source_file ?? null })}
+                          className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
+                <AlertDialog open={!!reportToDelete} onOpenChange={(open) => { if (!open && !isDeleting) setReportToDelete(null); }}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {reportToDelete?.label} report?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This permanently removes the {reportToDelete?.label} emissions record{reportToDelete?.file ? ` (${reportToDelete.file})` : ''} and its saved report.
+                      It will no longer count towards the dashboard totals. Copies already emailed or saved to Google Drive are not affected.
+                      You can upload the correct file for this quarter again afterwards.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+                      disabled={isDeleting}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                      Delete report
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+                </AlertDialog>
               </div>
             </TabsContent>
 

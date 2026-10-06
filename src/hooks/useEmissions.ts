@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { EmissionsData } from '@/types/database';
 
@@ -13,6 +13,7 @@ const toNum = (val: unknown): number => {
 };
 
 export function useEmissions(userId: string | undefined) {
+  const queryClient = useQueryClient();
   // Fetch all emissions data for user
   const emissionsQuery = useQuery({
     queryKey: ['emissions', userId],
@@ -83,7 +84,22 @@ export function useEmissions(userId: string | undefined) {
     return Object.values(byYear).sort((a, b) => a.year.localeCompare(b.year));
   };
 
+  // Delete a report: removes the emissions record; its saved report (user_reports) is removed
+  // automatically by the database (ON DELETE CASCADE), so it no longer counts anywhere.
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('emissions_data').delete().eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['emissions', userId] });
+    },
+  });
+
   return {
+    deleteEmissions: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
     emissions: emissionsQuery.data ?? [],
     latestEmissions,
     isLoading: emissionsQuery.isLoading,

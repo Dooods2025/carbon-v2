@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -66,6 +68,21 @@ import {
 } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmissions } from "@/hooks/useEmissions";
+import {
+  CATEGORY_KEYS,
+  type CategoryName,
+  aggregate,
+  parseSelection,
+  pctChange,
+  periodOptions,
+  previousRecords,
+  previousTitle,
+  quarterLabel,
+  quarterlyTrend,
+  recordsFor,
+  selectionTitle,
+  yearlyTotals,
+} from "@/lib/emissionsPeriods";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Demo data for when no real data exists
@@ -200,9 +217,23 @@ const DEMO_YEARLY_DATA: Record<string, { total: number; scope1: number; scope2: 
   },
 };
 
+// Shows a real % change vs the comparable earlier period, or a neutral note when there isn't one.
+// More emissions = red (worse), fewer = green (better).
+const ChangeNote = ({ change, label, fallback, inverse = false }: { change: number | null; label: string | null; fallback: string; inverse?: boolean }) => {
+  if (change === null || label === null) {
+    return <span className={inverse ? "opacity-90" : "text-muted-foreground"}>{fallback}</span>;
+  }
+  const up = change > 0;
+  const colour = inverse ? "" : up ? "text-red-500" : "text-green-600";
+  return (
+    <span className={`flex items-center gap-1 ${colour}`}>
+      {up ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+      {up ? "+" : ""}{change.toFixed(1)}% {label}
+    </span>
+  );
+};
+
 const Dashboard = () => {
-  const [compareYear1, setCompareYear1] = useState("2024");
-  const [compareYear2, setCompareYear2] = useState("2023");
   const [reportsDialogOpen, setReportsDialogOpen] = useState(false);
 
   // Get auth and emissions data from Supabase
@@ -211,8 +242,6 @@ const Dashboard = () => {
     emissions,
     latestEmissions,
     isLoading: emissionsLoading,
-    getCategoryData,
-    getYearlyData,
   } = useEmissions(user?.id);
 
   // Get scenarios data
@@ -223,26 +252,32 @@ const Dashboard = () => {
   const hasRealData = !!latestEmissions;
   const isLoading = authLoading || emissionsLoading;
 
+  // ---------------------------------------------------------------------------
+  // Period selection: latest quarter by default, or any quarter, calendar year, or all periods
+  // ---------------------------------------------------------------------------
+  const options = useMemo(() => periodOptions(emissions), [emissions]);
+  const latestQuarterValue = latestEmissions ? `q:${quarterLabel(latestEmissions)}` : "all";
+  const [periodValue, setPeriodValue] = useState<string | null>(null);
+  const activeValue = periodValue && options.some(o => o.value === periodValue) ? periodValue : latestQuarterValue;
+  const selection = parseSelection(activeValue);
+
+  const current = useMemo(() => aggregate(recordsFor(emissions, selection)), [emissions, activeValue]); // eslint-disable-line react-hooks/exhaustive-deps
+  const previous = useMemo(() => {
+    const recs = previousRecords(emissions, selection);
+    return recs.length ? aggregate(recs) : null;
+  }, [emissions, activeValue]); // eslint-disable-line react-hooks/exhaustive-deps
+  const periodTitle = selectionTitle(selection);
+  const compareLabel = previous ? `vs ${previousTitle(selection, previous.quarters)}` : null;
+  // Comparing a partial year with a full year is misleading, so flag it
+  const yearCoverageNote = selection.kind === "year" && current.records < 4
+    ? `Covers ${current.records} of 4 quarters`
+    : null;
+
   // Generate category data from Supabase or use demo
   const categoryData = useMemo(() => {
     if (!hasRealData) return DEMO_CATEGORY_DATA;
-
-    const realData = getCategoryData();
-    const colorMap: Record<string, string> = {
-      'Electricity': '#3b82f6',
-      'Gas': '#f97316',
-      'Flights': '#8b5cf6',
-      'Water': '#06b6d4',
-      'Waste': '#92400e',
-      'Fuel': '#ef4444',
-    };
-
-    return realData.map(item => ({
-      name: item.name,
-      emissions: typeof item.value === "number" ? item.value : parseFloat(item.value) || 0,
-      fill: colorMap[item.name] || '#6b7280',
-    }));
-  }, [hasRealData, getCategoryData]);
+    return CATEGORY_KEYS.map(c => ({ name: c.name, emissions: current.categories[c.name], fill: c.color }));
+  }, [hasRealData, current]);
 
   // Generate scope distribution data
   const distributionData = useMemo(() => {
@@ -253,42 +288,40 @@ const Dashboard = () => {
         { name: "Scope 3", value: DEMO_SCOPE_DATA.scope3, color: "#8b5cf6" },
       ];
     }
-
     return [
-      { name: "Scope 1", value: latestEmissions?.scope1_total ?? 0, color: "#f97316" },
-      { name: "Scope 2", value: latestEmissions?.scope2_total ?? 0, color: "hsl(var(--primary))" },
-      { name: "Scope 3", value: latestEmissions?.scope3_total ?? 0, color: "#8b5cf6" },
+      { name: "Scope 1", value: current.scope1, color: "#f97316" },
+      { name: "Scope 2", value: current.scope2, color: "hsl(var(--primary))" },
+      { name: "Scope 3", value: current.scope3, color: "#8b5cf6" },
     ];
-  }, [hasRealData, latestEmissions]);
+  }, [hasRealData, current]);
 
   // Get total and scope values
-  const totalEmissionsValue = hasRealData
-    ? (latestEmissions?.total_emissions ?? 0)
-    : DEMO_SCOPE_DATA.total;
+  const totalEmissionsValue = hasRealData ? current.total : DEMO_SCOPE_DATA.total;
+  const scope1Value = hasRealData ? current.scope1 : DEMO_SCOPE_DATA.scope1;
+  const scope2Value = hasRealData ? current.scope2 : DEMO_SCOPE_DATA.scope2;
+  const scope3Value = hasRealData ? current.scope3 : DEMO_SCOPE_DATA.scope3;
 
-  const scope1Value = hasRealData
-    ? (latestEmissions?.scope1_total ?? 0)
-    : DEMO_SCOPE_DATA.scope1;
-
-  const scope2Value = hasRealData
-    ? (latestEmissions?.scope2_total ?? 0)
-    : DEMO_SCOPE_DATA.scope2;
-
-  const scope3Value = hasRealData
-    ? (latestEmissions?.scope3_total ?? 0)
-    : DEMO_SCOPE_DATA.scope3;
+  // Real change vs the comparable earlier period (null when there is none)
+  const totalChange = hasRealData ? pctChange(current.total, previous?.total) : null;
+  const scope1Change = hasRealData ? pctChange(current.scope1, previous?.scope1) : null;
+  const scope2Change = hasRealData ? pctChange(current.scope2, previous?.scope2) : null;
+  const scope3Change = hasRealData ? pctChange(current.scope3, previous?.scope3) : null;
 
   // Generate table data from category data
   const tableData = useMemo(() => {
     const total = categoryData.reduce((sum, cat) => sum + cat.emissions, 0);
-    return categoryData.map(cat => ({
-      category: cat.name,
-      emissions: cat.emissions,
-      percentage: total > 0 ? (cat.emissions / total) * 100 : 0,
-      trend: Math.random() > 0.5 ? "up" as const : "down" as const,
-      change: Math.round(Math.random() * 10 * 10) / 10,
-    }));
-  }, [categoryData]);
+    return categoryData.map(cat => {
+      const change = hasRealData && previous
+        ? pctChange(cat.emissions, previous.categories[cat.name as CategoryName])
+        : null;
+      return {
+        category: cat.name,
+        emissions: cat.emissions,
+        percentage: total > 0 ? (cat.emissions / total) * 100 : 0,
+        change,
+      };
+    });
+  }, [categoryData, previous, hasRealData]);
 
   const totalEmissions = tableData.reduce((sum, row) => sum + row.emissions, 0);
 
@@ -313,33 +346,33 @@ const Dashboard = () => {
     }));
   }, [emissions]);
 
-  // Site data (from site_breakdown JSON field if available)
+  // Site data, summed across the selected period
   const siteData = useMemo(() => {
-    if (!hasRealData || !latestEmissions?.site_breakdown) {
+    if (!hasRealData) {
       return [
-        { name: "Bibra Lake", emissions: 112.45, percentage: 50.2, trend: "up" as const, change: 3.1 },
-        { name: "Kalgoorlie", emissions: 78.32, percentage: 34.9, trend: "down" as const, change: 1.8 },
-        { name: "Australind", emissions: 33.39, percentage: 14.9, trend: "up" as const, change: 2.4 },
+        { name: "Bibra Lake", emissions: 112.45, percentage: 50.2, change: null as number | null },
+        { name: "Kalgoorlie", emissions: 78.32, percentage: 34.9, change: null as number | null },
+        { name: "Australind", emissions: 33.39, percentage: 14.9, change: null as number | null },
       ];
     }
-
-    try {
-      const rawBreakdown = latestEmissions.site_breakdown;
-      const breakdown = (typeof rawBreakdown === "string" ? JSON.parse(rawBreakdown) : rawBreakdown) as Record<string, number>;
-      const total = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
-      return Object.entries(breakdown).map(([name, siteEmissions]) => ({
+    const rows = Object.entries(current.sites)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value]) => ({
         name,
-        emissions: typeof siteEmissions === "number" ? siteEmissions : parseFloat(String(siteEmissions)) || 0,
-        percentage: total > 0 ? (siteEmissions / total) * 100 : 0,
-        trend: Math.random() > 0.5 ? "up" as const : "down" as const,
-        change: Math.round(Math.random() * 5 * 10) / 10,
+        emissions: value,
+        percentage: current.total > 0 ? (value / current.total) * 100 : 0,
+        change: previous ? pctChange(value, previous.sites[name]) : null,
       }));
-    } catch {
-      return [
-        { name: "Main Site", emissions: totalEmissionsValue, percentage: 100, trend: "up" as const, change: 0 },
-      ];
+    if (current.organisationWide > 0.005) {
+      rows.push({
+        name: "Organisation-wide (fleet fuel & travel)",
+        emissions: current.organisationWide,
+        percentage: current.total > 0 ? (current.organisationWide / current.total) * 100 : 0,
+        change: previous ? pctChange(current.organisationWide, previous.organisationWide) : null,
+      });
     }
-  }, [hasRealData, latestEmissions, totalEmissionsValue]);
+    return rows;
+  }, [hasRealData, current, previous]);
 
   // Top emission sources (derived from category data)
   const topSources = useMemo(() => {
@@ -362,47 +395,31 @@ const Dashboard = () => {
     }));
   }, [categoryData]);
 
-  // Year comparison data - use real data if available
-  const yearlyData = useMemo(() => {
-    const realYearlyData = getYearlyData();
-    if (realYearlyData.length === 0) return DEMO_YEARLY_DATA;
+  // Quarterly trend (all saved quarters, oldest first)
+  const trendData = useMemo(() => quarterlyTrend(emissions), [emissions]);
+  const selectedQuarters = new Set(hasRealData ? current.quarters : []);
 
-    const converted: Record<string, { total: number; scope1: number; scope2: number; scope3: number; categories: { name: string; emissions: number }[] }> = {};
-
-    realYearlyData.forEach(yearData => {
-      converted[yearData.year] = {
-        total: yearData.total,
-        scope1: yearData.scope1,
-        scope2: yearData.scope2,
-        scope3: yearData.scope3,
-        categories: DEMO_CATEGORY_DATA.map(cat => ({
-          name: cat.name,
-          emissions: cat.emissions * (yearData.total / DEMO_SCOPE_DATA.total),
-        })),
-      };
-    });
-
-    ['2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018'].forEach(year => {
-      if (!converted[year]) {
-        converted[year] = DEMO_YEARLY_DATA[year];
-      }
-    });
-
-    return converted;
-  }, [getYearlyData]);
-
-  const year1Data = yearlyData[compareYear1] || DEMO_YEARLY_DATA["2024"];
-  const year2Data = yearlyData[compareYear2] || DEMO_YEARLY_DATA["2023"];
+  // Year comparison - real data only
+  const yearlyData = useMemo(() => yearlyTotals(emissions), [emissions]);
+  const availableYears = Object.keys(yearlyData).sort().reverse();
+  const [compareYear1State, setCompareYear1] = useState<string | null>(null);
+  const [compareYear2State, setCompareYear2] = useState<string | null>(null);
+  const compareYear1 = compareYear1State && yearlyData[compareYear1State] ? compareYear1State : (availableYears[0] ?? "");
+  const compareYear2 = compareYear2State && yearlyData[compareYear2State] ? compareYear2State : (availableYears[1] ?? availableYears[0] ?? "");
+  const canCompareYears = availableYears.length >= 2;
+  const emptyTotals = aggregate([]);
+  const year1Data = yearlyData[compareYear1] ?? emptyTotals;
+  const year2Data = yearlyData[compareYear2] ?? emptyTotals;
 
   const calculateChange = (current: number, previous: number) => {
-    const change = ((current - previous) / previous) * 100;
-    return change;
+    if (!previous) return 0;
+    return ((current - previous) / previous) * 100;
   };
 
-  const comparisonChartData = year1Data.categories.map((cat, index) => ({
-    name: cat.name,
-    [compareYear1]: cat.emissions,
-    [compareYear2]: year2Data.categories[index]?.emissions ?? 0,
+  const comparisonChartData = CATEGORY_KEYS.map(c => ({
+    name: c.name,
+    [compareYear1]: year1Data.categories[c.name],
+    [compareYear2]: year2Data.categories[c.name],
   }));
 
   // Show loading state
@@ -443,6 +460,36 @@ const Dashboard = () => {
             <p className="text-muted-foreground mt-1">
               Track and analyse your carbon emissions data
             </p>
+            {hasRealData && (
+              <div className="flex flex-wrap items-center gap-3 mt-4">
+                <span className="text-sm font-medium text-foreground flex items-center gap-1">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  Showing
+                </span>
+                <Select value={activeValue} onValueChange={setPeriodValue}>
+                  <SelectTrigger className="w-60" aria-label="Reporting period">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(["Overall", "Calendar year", "Quarter"] as const).map(group => (
+                      <SelectGroup key={group}>
+                        <SelectLabel>{group}</SelectLabel>
+                        {options.filter(o => o.group === group).map(o => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.value === latestQuarterValue ? `${o.label} (latest)` : o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">
+                  {current.records} {current.records === 1 ? "quarter" : "quarters"}
+                  {current.quarters.length > 1 ? `: ${current.quarters[0]} to ${current.quarters[current.quarters.length - 1]}` : ""}
+                  {yearCoverageNote ? ` · ${yearCoverageNote}` : ""}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex gap-3">
             <Button asChild className="gradient-primary">
@@ -535,7 +582,7 @@ const Dashboard = () => {
                           <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                             <p className="text-sm text-muted-foreground">Report Period</p>
                             <p className="text-2xl font-bold text-foreground">
-                              {latestEmissions?.report_period || 'Q4 2024'}
+                              {hasRealData ? periodTitle : 'Q4 2024'}
                             </p>
                           </div>
                         </div>
@@ -560,8 +607,7 @@ const Dashboard = () => {
                   <span className="text-lg font-medium">t CO2e</span>
                 </div>
                 <div className="flex items-center gap-1 mt-2 text-sm opacity-90">
-                  <TrendingUp className="h-4 w-4" />
-                  <span>+5.2% vs last quarter</span>
+                  <ChangeNote change={totalChange} label={compareLabel} fallback={hasRealData ? periodTitle : "Demo data"} inverse />
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center">
@@ -579,9 +625,8 @@ const Dashboard = () => {
                   <span className="text-3xl font-bold text-foreground">{scope1Value.toFixed(2)}</span>
                   <span className="text-lg font-medium text-primary">t CO2e</span>
                 </div>
-                <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-                  <TrendingDown className="h-4 w-4" />
-                  <span>-2.1% Direct emissions</span>
+                <div className="flex items-center gap-1 mt-2 text-sm">
+                  <ChangeNote change={scope1Change} label={compareLabel} fallback="Direct emissions" />
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -599,9 +644,8 @@ const Dashboard = () => {
                   <span className="text-3xl font-bold text-foreground">{scope2Value.toFixed(2)}</span>
                   <span className="text-lg font-medium text-primary">t CO2e</span>
                 </div>
-                <div className="flex items-center gap-1 mt-2 text-sm text-red-500">
-                  <TrendingUp className="h-4 w-4" />
-                  <span>+8.4% Indirect emissions</span>
+                <div className="flex items-center gap-1 mt-2 text-sm">
+                  <ChangeNote change={scope2Change} label={compareLabel} fallback="Purchased electricity" />
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -619,9 +663,8 @@ const Dashboard = () => {
                   <span className="text-3xl font-bold text-foreground">{scope3Value.toFixed(2)}</span>
                   <span className="text-lg font-medium text-primary">t CO2e</span>
                 </div>
-                <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-                  <TrendingDown className="h-4 w-4" />
-                  <span>Value chain emissions</span>
+                <div className="flex items-center gap-1 mt-2 text-sm">
+                  <ChangeNote change={scope3Change} label={compareLabel} fallback="Value chain emissions" />
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -752,10 +795,12 @@ const Dashboard = () => {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-foreground">{site.emissions.toFixed(2)} t</p>
-                      <div className={`flex items-center justify-end gap-1 text-xs ${site.trend === 'up' ? 'text-red-500' : 'text-green-600'}`}>
-                        {site.trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                        {site.trend === 'up' ? '+' : '-'}{site.change}%
-                      </div>
+                      {site.change !== null && (
+                        <div className={`flex items-center justify-end gap-1 text-xs ${site.change > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                          {site.change > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                          {site.change > 0 ? '+' : ''}{site.change.toFixed(1)}% {compareLabel}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -763,75 +808,60 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Industry Benchmarking */}
+          {/* Quarterly Trend */}
           <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <Scale className="h-5 w-5 text-primary" />
-                Industry Benchmarking
+                Quarterly Trend
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">Your emissions vs industry average</p>
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={[
-                      { name: 'Scope 1', yours: scope1Value, industry: 92.5 },
-                      { name: 'Scope 2', yours: scope2Value, industry: 105.2 },
-                      { name: 'Scope 3', yours: scope3Value, industry: 48.8 },
-                    ]}
-                    layout="vertical"
-                  >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis
-                      type="number"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                      tickFormatter={(value) => `${value}t`}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                      width={60}
-                    />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [`${value.toFixed(2)} t CO2e`, name === 'yours' ? 'Your Business' : 'Industry Avg']}
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Legend
-                      formatter={(value) => value === 'yours' ? 'Your Business' : 'Industry Average'}
-                    />
-                    <Bar dataKey="yours" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                    <Bar dataKey="industry" fill="hsl(var(--muted-foreground))" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                <p className="text-sm text-foreground">
-                  <span className="font-medium">
-                    {totalEmissionsValue < 246.5 ? '✓ Below' : '↑ Above'}
-                  </span>
-                  {' '}industry average by{' '}
-                  <span className="font-bold text-primary">
-                    {Math.abs(((totalEmissionsValue - 246.5) / 246.5) * 100).toFixed(1)}%
-                  </span>
-                </p>
-              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Emissions by scope for every uploaded quarter{hasRealData && selection.kind !== "all" ? ". Highlighted bars are in the selected period." : "."}
+              </p>
+              {trendData.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-16 text-center">Upload a quarter to see the trend.</p>
+              ) : (
+                <div className="h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={trendData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                      <XAxis dataKey="quarter" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickFormatter={(value) => `${value}t`} width={48} />
+                      <Tooltip
+                        formatter={(value: number, name: string) => [`${value.toFixed(2)} t CO2e`, name]}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Legend />
+                      {([
+                        { key: "scope1", name: "Scope 1", color: "#f97316" },
+                        { key: "scope2", name: "Scope 2", color: "hsl(var(--primary))" },
+                        { key: "scope3", name: "Scope 3", color: "#8b5cf6" },
+                      ] as const).map((sc, i) => (
+                        <Bar key={sc.key} dataKey={sc.key} name={sc.name} stackId="scopes" fill={sc.color} radius={i === 2 ? [4, 4, 0, 0] : [0, 0, 0, 0]}>
+                          {trendData.map((d) => (
+                            <Cell
+                              key={d.quarter}
+                              fillOpacity={selection.kind === "all" || selectedQuarters.has(d.quarter) ? 1 : 0.3}
+                            />
+                          ))}
+                        </Bar>
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
         {/* Year Comparison Section */}
-        <Card className="shadow-md hover:shadow-lg transition-shadow mb-8">
+        {(!hasRealData || canCompareYears) && <Card className="shadow-md hover:shadow-lg transition-shadow mb-8">
           <CardHeader className="pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -846,14 +876,7 @@ const Dashboard = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="2025">2025</SelectItem>
-                      <SelectItem value="2024">2024</SelectItem>
-                      <SelectItem value="2023">2023</SelectItem>
-                      <SelectItem value="2022">2022</SelectItem>
-                      <SelectItem value="2021">2021</SelectItem>
-                      <SelectItem value="2020">2020</SelectItem>
-                      <SelectItem value="2019">2019</SelectItem>
-                      <SelectItem value="2018">2018</SelectItem>
+                      {availableYears.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -863,14 +886,7 @@ const Dashboard = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="2025">2025</SelectItem>
-                    <SelectItem value="2024">2024</SelectItem>
-                    <SelectItem value="2023">2023</SelectItem>
-                    <SelectItem value="2022">2022</SelectItem>
-                    <SelectItem value="2021">2021</SelectItem>
-                    <SelectItem value="2020">2020</SelectItem>
-                    <SelectItem value="2019">2019</SelectItem>
-                    <SelectItem value="2018">2018</SelectItem>
+                    {availableYears.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -881,6 +897,11 @@ const Dashboard = () => {
               {/* Summary Cards */}
               <div className="space-y-4">
                 <h4 className="font-medium text-foreground">Summary Comparison</h4>
+                {hasRealData && (year1Data.records < 4 || year2Data.records < 4) && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800">
+                    {compareYear1} has {year1Data.records} of 4 quarters uploaded and {compareYear2} has {year2Data.records}. Totals only include uploaded quarters, so a partial year will look lower.
+                  </p>
+                )}
 
                 {/* Total Emissions Comparison */}
                 <div className="p-4 rounded-xl bg-muted/30 border border-border">
@@ -993,7 +1014,7 @@ const Dashboard = () => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Detailed Emissions Breakdown Table */}
         <Card className="shadow-md">
@@ -1021,7 +1042,7 @@ const Dashboard = () => {
                       </div>
                     </TableHead>
                     <TableHead className="font-semibold text-right">Percentage</TableHead>
-                    <TableHead className="font-semibold text-right">Trend</TableHead>
+                    <TableHead className="font-semibold text-right">{compareLabel ? `Change ${compareLabel}` : "Change"}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1031,18 +1052,18 @@ const Dashboard = () => {
                       <TableCell className="text-right">{row.emissions.toFixed(2)}</TableCell>
                       <TableCell className="text-right">{row.percentage.toFixed(1)}%</TableCell>
                       <TableCell className="text-right">
-                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                          row.trend === 'up'
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        }`}>
-                          {row.trend === 'up' ? (
-                            <TrendingUp className="h-3 w-3" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3" />
-                          )}
-                          {row.change}%
-                        </div>
+                        {row.change === null ? (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        ) : (
+                          <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            row.change > 0
+                              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                              : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          }`}>
+                            {row.change > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                            {row.change > 0 ? '+' : ''}{row.change.toFixed(1)}%
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

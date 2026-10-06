@@ -14,6 +14,8 @@ export interface Database {
           id: string;
           user_id: string;
           first_name: string | null;
+          last_name: string | null;
+          job_title: string | null;
           company_name: string | null;
           abn: string | null;
           contact_email: string | null;
@@ -38,6 +40,8 @@ export interface Database {
           id?: string;
           user_id: string;
           first_name?: string | null;
+          last_name?: string | null;
+          job_title?: string | null;
           company_name?: string | null;
           abn?: string | null;
           contact_email?: string | null;
@@ -62,6 +66,8 @@ export interface Database {
           id?: string;
           user_id?: string;
           first_name?: string | null;
+          last_name?: string | null;
+          job_title?: string | null;
           company_name?: string | null;
           abn?: string | null;
           contact_email?: string | null;
@@ -96,6 +102,7 @@ export interface Database {
           flights_emissions: number;
           water_emissions: number;
           waste_emissions: number;
+          paper_emissions: number | null;
           scope1_total: number;
           scope2_total: number;
           scope3_total: number;
@@ -116,6 +123,7 @@ export interface Database {
           flights_emissions?: number;
           water_emissions?: number;
           waste_emissions?: number;
+          paper_emissions?: number | null;
           scope1_total?: number;
           scope2_total?: number;
           scope3_total?: number;
@@ -136,6 +144,7 @@ export interface Database {
           flights_emissions?: number;
           water_emissions?: number;
           waste_emissions?: number;
+          paper_emissions?: number | null;
           scope1_total?: number;
           scope2_total?: number;
           scope3_total?: number;
@@ -204,6 +213,7 @@ export interface Database {
           user_id: string;
           filename: string;
           report_data: Json;
+          emissions_data_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -211,6 +221,7 @@ export interface Database {
           user_id: string;
           filename: string;
           report_data: Json;
+          emissions_data_id?: string | null;
           created_at?: string;
         };
         Update: {

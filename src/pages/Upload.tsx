@@ -31,6 +31,8 @@ interface Recommendation {
 interface BusinessProfile {
   // Essential Info
   firstName: string;
+  lastName: string;
+  jobTitle: string;
   companyName: string;
   abn: string;
   contactEmail: string;
@@ -152,6 +154,8 @@ const Upload = () => {
   const [logoPreview, setLogoPreview] = useState<string>("");
   const [profile, setProfile] = useState<BusinessProfile>({
     firstName: "",
+    lastName: "",
+    jobTitle: "",
     companyName: "",
     abn: "",
     contactEmail: "",
@@ -238,6 +242,8 @@ const Upload = () => {
 
           setProfile({
             firstName: data.first_name || "",
+            lastName: data.last_name || "",
+            jobTitle: data.job_title || "",
             companyName: data.company_name || "",
             abn: data.abn || "",
             contactEmail: data.contact_email || "",
@@ -444,15 +450,17 @@ const Upload = () => {
           console.error('Logo upload error:', uploadError);
           // Continue without logo if storage isn't set up
           toast({
-            title: "Logo upload skipped",
-            description: "Storage not configured. Profile saved without logo.",
+            title: "Logo not saved",
+            description: `The logo could not be uploaded (${uploadError.message}). The rest of your profile was saved.`,
+            variant: "destructive",
           });
         } else {
           // Get public URL
           const { data: urlData } = supabase.storage
             .from('logos')
             .getPublicUrl(fileName);
-          logoUrl = urlData.publicUrl;
+          // Same file path is reused on re-upload, so add a version to bypass browser/CDN caching
+          logoUrl = `${urlData.publicUrl}?v=${Date.now()}`;
         }
       }
 
@@ -463,12 +471,11 @@ const Upload = () => {
         .eq("user_id", user.id)
         .single();
 
-      // Note: first_name field requires adding column to Supabase
-      // ALTER TABLE business_profiles ADD COLUMN first_name TEXT;
-      // Only include fields that exist in the database
       const profileData = {
         user_id: user.id,
         first_name: profile.firstName || null,
+        last_name: profile.lastName || null,
+        job_title: profile.jobTitle || null,
         company_name: profile.companyName,
         abn: profile.abn,
         contact_email: profile.contactEmail,
@@ -718,6 +725,28 @@ const Upload = () => {
                     placeholder="e.g., John"
                     value={profile.firstName}
                     onChange={(e) => handleChange("firstName", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Your Last Name</Label>
+                  <Input
+                    id="lastName"
+                    placeholder="e.g., Smith"
+                    value={profile.lastName}
+                    onChange={(e) => handleChange("lastName", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="jobTitle">Your Role in the Company</Label>
+                  <Input
+                    id="jobTitle"
+                    placeholder="e.g., HSEQ Manager"
+                    value={profile.jobTitle}
+                    onChange={(e) => handleChange("jobTitle", e.target.value)}
                     className="h-12"
                   />
                 </div>
