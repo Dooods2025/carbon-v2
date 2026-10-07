@@ -15,6 +15,8 @@ import AppHeader from "@/components/AppHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { quarterLabel, CATEGORY_KEYS, num } from "@/lib/emissionsPeriods";
+import type { EmissionsData } from "@/types/database";
 
 
 
@@ -210,6 +212,43 @@ const FileUpload = () => {
           formData.append("period_start", start);
           formData.append("period_end", end);
         }
+      }
+
+      // Details for the board report: who it is prepared by, and earlier quarters for the trend
+      try {
+        const { data: profile } = await supabase
+          .from("business_profiles")
+          .select("company_name, first_name, last_name, job_title, logo_url")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (profile) {
+          if (profile.company_name) formData.append("company_name", profile.company_name);
+          if (profile.first_name) formData.append("first_name", profile.first_name);
+          if (profile.last_name) formData.append("last_name", profile.last_name);
+          if (profile.job_title) formData.append("role", profile.job_title);
+          if (profile.logo_url) formData.append("logo_url", profile.logo_url.split("?")[0]);
+        }
+        formData.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone || "Australia/Perth");
+
+        const { data: earlier } = await supabase
+          .from("emissions_data")
+          .select("*")
+          .eq("user_id", user.id);
+        const history = ((earlier ?? []) as EmissionsData[])
+          .filter((r) => !replaceIds.includes(r.id) && quarterLabel(r) !== reportingPeriod)
+          .map((r) => ({
+            quarter: quarterLabel(r),
+            scope1: num(r.scope1_total),
+            scope2: num(r.scope2_total),
+            scope3: num(r.scope3_total),
+            total: num(r.total_emissions),
+            byCategory: Object.fromEntries(
+              CATEGORY_KEYS.map((c) => [c.name, num((r as Record<string, unknown>)[c.key])])
+            ),
+          }));
+        formData.append("history", JSON.stringify(history));
+      } catch (e) {
+        console.warn("Could not add report details; the report will still be produced", e);
       }
 
       // Send file to n8n webhook

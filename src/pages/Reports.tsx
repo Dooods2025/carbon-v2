@@ -149,8 +149,12 @@ const Reports = () => {
         if (data) {
           // Create a map of filename -> report_data for easy lookup
           const reportsMap: Record<string, any> = {};
+          // Newest first, so the latest report wins for each key
           data.forEach(report => {
-            reportsMap[report.filename] = report.report_data;
+            if (report.emissions_data_id && !reportsMap[`id:${report.emissions_data_id}`]) {
+              reportsMap[`id:${report.emissions_data_id}`] = report.report_data;
+            }
+            if (!reportsMap[report.filename]) reportsMap[report.filename] = report.report_data;
           });
           setUserReports(reportsMap);
           console.log('Loaded user_reports:', Object.keys(reportsMap));
@@ -212,7 +216,7 @@ const Reports = () => {
 
     // Try to find the full HTML report from user_reports
     const sourceFile = report.source_file;
-    const fullReportData = sourceFile ? userReports[sourceFile] : null;
+    const fullReportData = userReports[`id:${report.id}`] ?? (sourceFile ? userReports[sourceFile] : null);
     const reportHtml = fullReportData?.reportHtml;
 
     console.log('Download PDF - source_file:', sourceFile);
@@ -228,9 +232,14 @@ const Reports = () => {
       printWindow.document.close();
       printWindow.focus();
 
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
+      // Wait for the logo to load (up to 4 seconds) so it appears in the PDF
+      const started = Date.now();
+      const printWhenReady = () => {
+        const images = Array.from(printWindow.document.images);
+        if (images.every((img) => img.complete) || Date.now() - started > 4000) printWindow.print();
+        else setTimeout(printWhenReady, 200);
+      };
+      setTimeout(printWhenReady, 300);
       return;
     }
 
