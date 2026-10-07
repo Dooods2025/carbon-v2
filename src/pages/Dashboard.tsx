@@ -408,8 +408,11 @@ const Dashboard = () => {
   const compareYear2 = compareYear2State && yearlyData[compareYear2State] ? compareYear2State : (availableYears[1] ?? availableYears[0] ?? "");
   const canCompareYears = availableYears.length >= 2;
   const emptyTotals = aggregate([]);
-  const year1Data = yearlyData[compareYear1] ?? emptyTotals;
-  const year2Data = yearlyData[compareYear2] ?? emptyTotals;
+  // Whatever order the two years are picked in, show the change from the earlier year to the
+  // later one, so "up" always means emissions went up over time.
+  const [laterYear, earlierYear] = [compareYear1, compareYear2].sort((x, y) => y.localeCompare(x));
+  const year1Data = yearlyData[laterYear] ?? emptyTotals;
+  const year2Data = yearlyData[earlierYear] ?? emptyTotals;
 
   const calculateChange = (current: number, previous: number) => {
     if (!previous) return 0;
@@ -418,8 +421,8 @@ const Dashboard = () => {
 
   const comparisonChartData = CATEGORY_KEYS.map(c => ({
     name: c.name,
-    [compareYear1]: year1Data.categories[c.name],
-    [compareYear2]: year2Data.categories[c.name],
+    [laterYear]: year1Data.categories[c.name],
+    [earlierYear]: year2Data.categories[c.name],
   }));
 
   // Show loading state
@@ -899,14 +902,14 @@ const Dashboard = () => {
                 <h4 className="font-medium text-foreground">Summary Comparison</h4>
                 {hasRealData && (year1Data.records < 4 || year2Data.records < 4) && (
                   <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800">
-                    {compareYear1} has {year1Data.records} of 4 quarters uploaded and {compareYear2} has {year2Data.records}. Totals only include uploaded quarters, so a partial year will look lower.
+                    {laterYear} has {year1Data.records} of 4 quarters uploaded and {earlierYear} has {year2Data.records}. Totals only include uploaded quarters, so a partial year will look lower.
                   </p>
                 )}
 
                 {/* Total Emissions Comparison */}
                 <div className="p-4 rounded-xl bg-muted/30 border border-border">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">Total Emissions</span>
+                    <span className="text-sm text-muted-foreground">Total Emissions, change {earlierYear} → {laterYear}</span>
                     <div className={`flex items-center gap-1 text-sm font-medium ${
                       calculateChange(year1Data.total, year2Data.total) > 0 ? 'text-red-500' : 'text-green-600'
                     }`}>
@@ -915,17 +918,17 @@ const Dashboard = () => {
                       ) : (
                         <TrendingDown className="h-4 w-4" />
                       )}
-                      {Math.abs(calculateChange(year1Data.total, year2Data.total)).toFixed(1)}%
+                      {calculateChange(year1Data.total, year2Data.total) > 0 ? '+' : ''}{calculateChange(year1Data.total, year2Data.total).toFixed(1)}%
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-2xl font-bold text-foreground">{year1Data.total.toFixed(2)}</span>
-                      <span className="text-sm text-muted-foreground ml-1">t CO2e ({compareYear1})</span>
+                      <span className="text-sm text-muted-foreground ml-1">t CO2e ({laterYear})</span>
                     </div>
                     <div className="text-right">
                       <span className="text-lg text-muted-foreground">{year2Data.total.toFixed(2)}</span>
-                      <span className="text-sm text-muted-foreground ml-1">t CO2e ({compareYear2})</span>
+                      <span className="text-sm text-muted-foreground ml-1">t CO2e ({earlierYear})</span>
                     </div>
                   </div>
                 </div>
@@ -936,10 +939,10 @@ const Dashboard = () => {
                     <thead>
                       <tr className="bg-muted/50 text-xs font-medium text-muted-foreground">
                         <th className="p-3 text-left w-24">Scope</th>
-                        <th className="p-3 text-center bg-primary/5">{compareYear1}</th>
+                        <th className="p-3 text-center bg-primary/5">{laterYear}</th>
                         <th className="w-[3px] bg-border"></th>
-                        <th className="p-3 text-center">{compareYear2}</th>
-                        <th className="p-3 text-center w-24">Change</th>
+                        <th className="p-3 text-center">{earlierYear}</th>
+                        <th className="p-3 text-center w-28">Change {earlierYear} → {laterYear}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -963,7 +966,7 @@ const Dashboard = () => {
                                     : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                 }`}>
                                   {change > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                                  {Math.abs(change).toFixed(1)}%
+                                  {change > 0 ? '+' : ''}{change.toFixed(1)}%
                                 </div>
                               </div>
                             </td>
@@ -1006,8 +1009,8 @@ const Dashboard = () => {
                         }}
                       />
                       <Legend />
-                      <Bar dataKey={compareYear1} fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                      <Bar dataKey={compareYear2} fill="hsl(var(--primary) / 0.4)" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey={laterYear} fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey={earlierYear} fill="hsl(var(--primary) / 0.4)" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
