@@ -56,9 +56,9 @@ interface BusinessProfile {
   budgetAppetite: string;
 }
 
-// Industries with a published emissions average (ANZSIC subdivision). The figures live in the report workflow.
+// ANZSIC subdivisions the report workflow has a note for (why no industry average is shown).
 const BENCHMARK_INDUSTRIES = [
-  { value: "none", label: "No comparison" },
+  { value: "none", label: "Not specified" },
   { value: "10", label: "Exploration and other mining support services (ANZSIC 10)" },
 ];
 
@@ -850,11 +850,11 @@ const Upload = () => {
                     onChange={(e) => handleChange("annualRevenue", e.target.value)}
                     className="h-12"
                   />
-                  <p className="text-xs text-muted-foreground">Used only to compare emissions per $ million of revenue in your reports.</p>
+                  <p className="text-xs text-muted-foreground">Used only to show emissions per $ million of revenue in your reports. Update it each year.</p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Industry for Comparison</Label>
+                  <Label>Industry Classification (ANZSIC)</Label>
                   <Select
                     value={profile.benchmarkIndustry || "none"}
                     onValueChange={(value) => handleChange("benchmarkIndustry", value)}
@@ -870,7 +870,7 @@ const Upload = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">Reports compare your emissions with the national average for this industry.</p>
+                  <p className="text-xs text-muted-foreground">Reports use this to explain which published industry figures exist and why your emissions are tracked against your own previous periods.</p>
                 </div>
 
                 <div className="space-y-2">

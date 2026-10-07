@@ -214,7 +214,9 @@ const FileUpload = () => {
         }
       }
 
-      // Details for the board report: who it is prepared by, and earlier quarters for the trend
+      // Details for the report: who it is prepared by, and earlier quarters for the trend
+      let profileEmployees: number | null = null;
+      let profileRevenue: number | null = null;
       try {
         const { data: profile } = await supabase
           .from("business_profiles")
@@ -227,6 +229,8 @@ const FileUpload = () => {
           if (profile.last_name) formData.append("last_name", profile.last_name);
           if (profile.job_title) formData.append("role", profile.job_title);
           if (profile.logo_url) formData.append("logo_url", profile.logo_url.split("?")[0]);
+          profileEmployees = profile.num_employees ?? null;
+          profileRevenue = profile.annual_revenue ?? null;
           if (profile.num_employees) formData.append("employees", String(profile.num_employees));
           if (profile.annual_revenue) formData.append("annual_revenue", String(profile.annual_revenue));
           if (profile.benchmark_industry) formData.append("benchmark_industry", profile.benchmark_industry);
@@ -245,6 +249,8 @@ const FileUpload = () => {
             scope2: num(r.scope2_total),
             scope3: num(r.scope3_total),
             total: num(r.total_emissions),
+            employees: r.num_employees ?? undefined,
+            annualRevenue: r.annual_revenue ?? undefined,
             byCategory: Object.fromEntries(
               CATEGORY_KEYS.map((c) => [c.name, num((r as Record<string, unknown>)[c.key])])
             ),
@@ -387,6 +393,8 @@ const FileUpload = () => {
             ? JSON.parse(result.site_breakdown)
             : (result.site_breakdown ?? null),
           source_file: file.name,
+          num_employees: profileEmployees,
+          annual_revenue: profileRevenue,
         };
         console.log("DEBUG: Supabase insert payload:", JSON.stringify(insertPayload, null, 2));
 

@@ -115,6 +115,8 @@ export interface Database {
           total_emissions: number;
           site_breakdown: Json | null;
           source_file: string | null;
+          num_employees: number | null;
+          annual_revenue: number | null;
           created_at: string;
         };
         Insert: {
@@ -136,6 +138,8 @@ export interface Database {
           total_emissions?: number;
           site_breakdown?: Json | null;
           source_file?: string | null;
+          num_employees?: number | null;
+          annual_revenue?: number | null;
           created_at?: string;
         };
         Update: {
@@ -157,6 +161,8 @@ export interface Database {
           total_emissions?: number;
           site_breakdown?: Json | null;
           source_file?: string | null;
+          num_employees?: number | null;
+          annual_revenue?: number | null;
         };
         Relationships: [];
       };
