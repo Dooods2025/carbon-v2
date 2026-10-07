@@ -21,6 +21,8 @@ export interface Database {
           contact_email: string | null;
           industry: string | null;
           num_employees: number | null;
+          annual_revenue: number | null;
+          benchmark_industry: string | null;
           num_sites: number | null;
           business_type: string | null;
           logo_url: string | null;
@@ -47,6 +49,8 @@ export interface Database {
           contact_email?: string | null;
           industry?: string | null;
           num_employees?: number | null;
+          annual_revenue?: number | null;
+          benchmark_industry?: string | null;
           num_sites?: number | null;
           business_type?: string | null;
           logo_url?: string | null;
@@ -73,6 +77,8 @@ export interface Database {
           contact_email?: string | null;
           industry?: string | null;
           num_employees?: number | null;
+          annual_revenue?: number | null;
+          benchmark_industry?: string | null;
           num_sites?: number | null;
           business_type?: string | null;
           logo_url?: string | null;

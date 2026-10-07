@@ -218,7 +218,7 @@ const FileUpload = () => {
       try {
         const { data: profile } = await supabase
           .from("business_profiles")
-          .select("company_name, first_name, last_name, job_title, logo_url")
+          .select("company_name, first_name, last_name, job_title, logo_url, num_employees, annual_revenue, benchmark_industry")
           .eq("user_id", user.id)
           .maybeSingle();
         if (profile) {
@@ -227,6 +227,9 @@ const FileUpload = () => {
           if (profile.last_name) formData.append("last_name", profile.last_name);
           if (profile.job_title) formData.append("role", profile.job_title);
           if (profile.logo_url) formData.append("logo_url", profile.logo_url.split("?")[0]);
+          if (profile.num_employees) formData.append("employees", String(profile.num_employees));
+          if (profile.annual_revenue) formData.append("annual_revenue", String(profile.annual_revenue));
+          if (profile.benchmark_industry) formData.append("benchmark_industry", profile.benchmark_industry);
         }
         formData.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone || "Australia/Perth");
 

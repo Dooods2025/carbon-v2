@@ -39,6 +39,8 @@ interface BusinessProfile {
   contactEmail: string;
   industry: string;
   employees: string;
+  annualRevenue: string;
+  benchmarkIndustry: string;
   sites: string;
   businessType: string;
   logoUrl: string;
@@ -53,6 +55,12 @@ interface BusinessProfile {
   target: string;
   budgetAppetite: string;
 }
+
+// Industries with a published emissions average (ANZSIC subdivision). The figures live in the report workflow.
+const BENCHMARK_INDUSTRIES = [
+  { value: "none", label: "No comparison" },
+  { value: "10", label: "Exploration and other mining support services (ANZSIC 10)" },
+];
 
 const industries = [
   "Professional Services",
@@ -163,6 +171,8 @@ const Upload = () => {
     contactEmail: "",
     industry: "",
     employees: "",
+    annualRevenue: "",
+    benchmarkIndustry: "",
     sites: "",
     businessType: "",
     logoUrl: "",
@@ -251,6 +261,8 @@ const Upload = () => {
             contactEmail: data.contact_email || "",
             industry: data.industry || "",
             employees: data.num_employees?.toString() || "",
+            annualRevenue: data.annual_revenue != null ? String(data.annual_revenue) : "",
+            benchmarkIndustry: data.benchmark_industry || "",
             sites: data.num_sites?.toString() || "",
             businessType: data.business_type || "",
             logoUrl: data.logo_url || "",
@@ -483,6 +495,8 @@ const Upload = () => {
         contact_email: profile.contactEmail,
         industry: profile.industry,
         num_employees: profile.employees ? parseInt(profile.employees) : null,
+        annual_revenue: profile.annualRevenue ? Number(profile.annualRevenue.replace(/[^0-9.]/g, "")) || null : null,
+        benchmark_industry: profile.benchmarkIndustry && profile.benchmarkIndustry !== "none" ? profile.benchmarkIndustry : null,
         num_sites: profile.sites ? parseInt(profile.sites) : null,
         business_type: profile.businessType,
         logo_url: logoUrl || null,
@@ -824,6 +838,39 @@ const Upload = () => {
                     onChange={(e) => handleChange("employees", e.target.value)}
                     className="h-12"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="annualRevenue">Annual Revenue (AUD)</Label>
+                  <Input
+                    id="annualRevenue"
+                    inputMode="decimal"
+                    placeholder="e.g., 12500000"
+                    value={profile.annualRevenue}
+                    onChange={(e) => handleChange("annualRevenue", e.target.value)}
+                    className="h-12"
+                  />
+                  <p className="text-xs text-muted-foreground">Used only to compare emissions per $ million of revenue in your reports.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Industry for Comparison</Label>
+                  <Select
+                    value={profile.benchmarkIndustry || "none"}
+                    onValueChange={(value) => handleChange("benchmarkIndustry", value)}
+                  >
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BENCHMARK_INDUSTRIES.map((b) => (
+                        <SelectItem key={b.value} value={b.value}>
+                          {b.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Reports compare your emissions with the national average for this industry.</p>
                 </div>
 
                 <div className="space-y-2">
