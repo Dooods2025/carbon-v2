@@ -196,3 +196,54 @@ export function yearlyTotals(records: EmissionsData[]): Record<string, PeriodTot
   for (const y of years) out[String(y)] = aggregate(records.filter((r) => yearOf(r) === y));
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Upload status for the profile page banner
+// ---------------------------------------------------------------------------
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const quarterIndex = (label: string): number | null => {
+  const m = label.match(/^Q([1-4]) (\d{4})$/);
+  return m ? parseInt(m[2], 10) * 4 + (parseInt(m[1], 10) - 1) : null;
+};
+const indexToLabel = (i: number) => `Q${(i % 4) + 1} ${Math.floor(i / 4)}`;
+const quarterEndDate = (i: number) => new Date(Math.floor(i / 4), (i % 4) * 3 + 3, 0); // last day of quarter
+
+export interface UploadStatus {
+  quarters: number;
+  latest: string | null;
+  latestUploadedOn: string | null;
+  /** Quarters missing between the first and latest uploaded quarter. */
+  gaps: string[];
+  /** The quarter after the latest upload. */
+  nextDue: string | null;
+  nextDueEnded: string | null;
+  /** True once that quarter has finished, so its data can be uploaded. */
+  nextDueReady: boolean;
+}
+
+export function getUploadStatus(records: EmissionsData[], today: Date = new Date()): UploadStatus {
+  const byIndex = new Map<number, EmissionsData>();
+  for (const r of records) {
+    const i = quarterIndex(quarterLabel(r));
+    if (i !== null) byIndex.set(i, r);
+  }
+  const idx = [...byIndex.keys()].sort((a, b) => a - b);
+  if (idx.length === 0) {
+    return { quarters: 0, latest: null, latestUploadedOn: null, gaps: [], nextDue: null, nextDueEnded: null, nextDueReady: false };
+  }
+  const first = idx[0];
+  const last = idx[idx.length - 1];
+  const gaps: string[] = [];
+  for (let i = first; i <= last; i++) if (!byIndex.has(i)) gaps.push(indexToLabel(i));
+  const latestRec = byIndex.get(last)!;
+  const end = quarterEndDate(last + 1);
+  return {
+    quarters: idx.length,
+    latest: indexToLabel(last),
+    latestUploadedOn: latestRec.created_at ? new Date(latestRec.created_at).toLocaleDateString("en-AU") : null,
+    gaps,
+    nextDue: indexToLabel(last + 1),
+    nextDueEnded: `${end.getDate()} ${MONTHS_SHORT[end.getMonth()]} ${end.getFullYear()}`,
+    nextDueReady: today > end,
+  };
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Building2, Settings, Leaf as LeafIcon, DollarSign, Lightbulb, Sparkles, Loader2, ArrowRight, Upload as UploadIcon, ImagePlus, X, Target, Eye } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEmissions } from "@/hooks/useEmissions";
 import { useScenarios } from "@/hooks/useScenarios";
 import { supabase } from "@/lib/supabase";
+import { getUploadStatus } from "@/lib/emissionsPeriods";
 import { useToast } from "@/hooks/use-toast";
 
 interface Recommendation {
@@ -138,7 +139,8 @@ const budgetOptions = [
 const Upload = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { latestEmissions, getCategoryData } = useEmissions(user?.id);
+  const { latestEmissions, emissions, getCategoryData } = useEmissions(user?.id);
+  const uploadStatus = useMemo(() => getUploadStatus(emissions), [emissions]);
   const { scenarios } = useScenarios(user?.id);
   const { toast } = useToast();
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -585,29 +587,49 @@ const Upload = () => {
               </p>
             </div>
 
-            {/* News & Updates Panel */}
-            <div className="bg-gradient-to-r from-stone-200 to-stone-100 dark:from-stone-700 dark:to-stone-600 rounded-2xl p-4 flex items-center gap-4 border border-stone-300 dark:border-stone-500 shadow-sm">
+            {/* Upload status: built from the quarters actually uploaded */}
+            <div className="bg-gradient-to-r from-stone-200 to-stone-100 dark:from-stone-700 dark:to-stone-600 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 border border-stone-300 dark:border-stone-500 shadow-sm">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-medium">Latest</span>
                 </div>
                 <p className="text-stone-800 dark:text-stone-100 text-sm font-medium">
-                  NGERS reporting deadline approaching. Ensure your Q4 data is uploaded by February 28th for compliance.
+                  {uploadStatus.latest
+                    ? <>Latest data uploaded: <strong>{uploadStatus.latest}</strong>{uploadStatus.latestUploadedOn ? ` (uploaded ${uploadStatus.latestUploadedOn})` : ""}.</>
+                    : "No emissions data uploaded yet."}{" "}
+                  {uploadStatus.nextDue && (
+                    uploadStatus.nextDueReady
+                      ? <><strong>{uploadStatus.nextDue}</strong> ended {uploadStatus.nextDueEnded} and is ready to upload.</>
+                      : <>Next quarter to upload: <strong>{uploadStatus.nextDue}</strong> (ends {uploadStatus.nextDueEnded}).</>
+                  )}
                 </p>
               </div>
-              <div className="hidden sm:flex flex-col gap-2 text-xs text-stone-700 dark:text-stone-200">
+              <div className="flex flex-col gap-2 text-xs text-stone-700 dark:text-stone-200">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                  <span>2 data gaps detected</span>
+                  <span className={`w-2 h-2 rounded-full ${uploadStatus.gaps.length ? "bg-amber-500" : "bg-green-500"}`}></span>
+                  <span>
+                    {uploadStatus.quarters === 0
+                      ? "Upload your first quarter to start tracking"
+                      : uploadStatus.gaps.length
+                        ? `Missing quarter${uploadStatus.gaps.length > 1 ? "s" : ""}: ${uploadStatus.gaps.join(", ")}`
+                        : `No missing quarters (${uploadStatus.quarters} uploaded)`}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                  <span>On track for Q1 target</span>
-                </div>
+                {uploadStatus.nextDueReady && (
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <Link to="/file-upload" className="underline hover:text-foreground">Upload {uploadStatus.nextDue}</Link>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Emissions Summary Cards */}
+            {/* Emissions Summary Cards (latest quarter) */}
+            {uploadStatus.latest && (
+              <p className="text-sm text-muted-foreground -mb-3">
+                Emissions for the latest quarter, {uploadStatus.latest}. See the <Link to="/dashboard" className="underline text-primary">Dashboard</Link> for other periods.
+              </p>
+            )}
             <EmissionsSummaryCards
               totalEmissions={latestEmissions?.total_emissions ?? 0}
               scope1Emissions={latestEmissions?.scope1_total ?? 0}
