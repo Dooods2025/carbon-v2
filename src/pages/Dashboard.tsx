@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useLeadershipReports, openLeadershipReport } from "@/hooks/useLeadershipReports";
 import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -243,6 +244,18 @@ const Dashboard = () => {
     latestEmissions,
     isLoading: emissionsLoading,
   } = useEmissions(user?.id);
+  const { getReportHtml } = useLeadershipReports(user?.id);
+  const navigate = useNavigate();
+
+  // Open the saved leadership report for an upload (print = true opens the print / Save as PDF dialog).
+  // Older uploads without a saved report go to the Reports page instead.
+  const openReport = (recordId: string | undefined, print: boolean) => {
+    const record = recordId ? emissions?.find((e) => e.id === recordId) : null;
+    const html = getReportHtml(record);
+    if (html && openLeadershipReport(html, print)) return;
+    setReportsDialogOpen(false);
+    navigate("/reports");
+  };
 
   // Get scenarios data
   const { scenarios, isLoading: scenariosLoading } = useScenarios(user?.id);
@@ -335,8 +348,9 @@ const Dashboard = () => {
       ];
     }
 
-    return emissions.slice(0, 6).map((record, index) => ({
+    return emissions.map((record, index) => ({
       id: index + 1,
+      recordId: record.id as string | undefined,
       title: `${record.report_period || 'Report'} Dashboard Report`,
       period: record.period_start && record.period_end
         ? `${new Date(record.period_start).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })} - ${new Date(record.period_end).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })}`
@@ -538,11 +552,11 @@ const Dashboard = () => {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" disabled={!('recordId' in report)} onClick={() => openReport((report as { recordId?: string }).recordId, false)}>
                             <Eye className="h-4 w-4 mr-2" />
                             View Report
                           </Button>
-                          <Button size="sm" className="gradient-primary">
+                          <Button size="sm" className="gradient-primary" disabled={!('recordId' in report)} onClick={() => openReport((report as { recordId?: string }).recordId, true)}>
                             <Download className="h-4 w-4 mr-2" />
                             Download PDF
                           </Button>
@@ -554,12 +568,12 @@ const Dashboard = () => {
                     <div className="bg-card border border-border rounded-xl p-6">
                       <div className="flex items-center justify-between mb-6">
                         <div>
-                          <h4 className="font-semibold text-foreground text-lg">Full Dashboard Report</h4>
+                          <h4 className="font-semibold text-foreground text-lg">Leadership Report</h4>
                           <p className="text-sm text-muted-foreground">
-                            Complete emissions analysis for current period
+                            The full report for your latest quarter{latestEmissions?.report_period ? ` (${latestEmissions.report_period})` : ''}, the same one that is emailed
                           </p>
                         </div>
-                        <Button className="gradient-primary">
+                        <Button className="gradient-primary" disabled={!latestEmissions} onClick={() => openReport(latestEmissions?.id, true)}>
                           <Download className="h-4 w-4 mr-2" />
                           Download Full Report
                         </Button>
@@ -568,24 +582,22 @@ const Dashboard = () => {
                         <div className="p-4 bg-muted/50 rounded-lg">
                           <h5 className="font-medium text-foreground mb-2">Report Contents</h5>
                           <ul className="text-sm text-muted-foreground space-y-1">
-                            <li>• Executive Summary</li>
-                            <li>• Total Emissions Overview</li>
-                            <li>• Scope 1, 2 & 3 Breakdown</li>
-                            <li>• Category Analysis</li>
-                            <li>• Site Comparison</li>
-                            <li>• Year-on-Year Trends</li>
-                            <li>• Recommendations</li>
+                            <li>• Summary, key messages and rolling 12-month totals</li>
+                            <li>• Emissions profile by source, scope and site</li>
+                            <li>• Performance over time and emissions intensity</li>
+                            <li>• Analysis and recommendations</li>
+                            <li>• Compliance, methodology and emission factors</li>
                           </ul>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                             <p className="text-sm text-muted-foreground">Total Emissions</p>
-                            <p className="text-2xl font-bold text-foreground">{totalEmissionsValue.toFixed(2)} t CO2e</p>
+                            <p className="text-2xl font-bold text-foreground">{(hasRealData ? Number(latestEmissions?.total_emissions ?? 0) : totalEmissionsValue).toFixed(2)} t CO2e</p>
                           </div>
                           <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                             <p className="text-sm text-muted-foreground">Report Period</p>
                             <p className="text-2xl font-bold text-foreground">
-                              {hasRealData ? periodTitle : 'Q4 2024'}
+                              {hasRealData ? (latestEmissions?.report_period || periodTitle) : 'Q4 2024'}
                             </p>
                           </div>
                         </div>

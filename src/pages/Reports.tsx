@@ -33,7 +33,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmissions } from "@/hooks/useEmissions";
-import { supabase } from "@/lib/supabase";
+import { useLeadershipReports, openLeadershipReport } from "@/hooks/useLeadershipReports";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface EmissionCategory {
@@ -56,6 +56,7 @@ type DemoReport = {
   water_emissions: number;
   waste_emissions: number;
   fuel_emissions: number;
+  paper_emissions?: number | null;
   created_at: string;
   period_start: string;
   period_end: string;
@@ -126,46 +127,9 @@ const Reports = () => {
   };
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [userReports, setUserReports] = useState<Record<string, any>>({});
   const reportRef = useRef<HTMLDivElement>(null);
-
-  // Fetch user_reports to get full reportHtml
-  useEffect(() => {
-    const fetchUserReports = async () => {
-      if (!user?.id) return;
-
-      try {
-        const { data, error } = await supabase
-          .from('user_reports')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching user_reports:', error);
-          return;
-        }
-
-        if (data) {
-          // Create a map of filename -> report_data for easy lookup
-          const reportsMap: Record<string, any> = {};
-          // Newest first, so the latest report wins for each key
-          data.forEach(report => {
-            if (report.emissions_data_id && !reportsMap[`id:${report.emissions_data_id}`]) {
-              reportsMap[`id:${report.emissions_data_id}`] = report.report_data;
-            }
-            if (!reportsMap[report.filename]) reportsMap[report.filename] = report.report_data;
-          });
-          setUserReports(reportsMap);
-          console.log('Loaded user_reports:', Object.keys(reportsMap));
-        }
-      } catch (err) {
-        console.error('Error in fetchUserReports:', err);
-      }
-    };
-
-    fetchUserReports();
-  }, [user?.id]);
+  // Saved leadership reports (the full report that is also emailed)
+  const { getReportHtml } = useLeadershipReports(user?.id);
 
   const isLoading = authLoading || emissionsLoading;
   const hasReports = emissions && emissions.length > 0;
@@ -204,8 +168,9 @@ const Reports = () => {
   const totalEmissions = selectedReport?.total_emissions ?? 0;
   const isPlaceholderData = !hasReports;
 
+  // Print the leadership report for the report shown on this tab (not the app page)
   const handlePrint = () => {
-    window.print();
+    if (displayLatest && !('isDemo' in displayLatest && displayLatest.isDemo)) handleDownloadPDF(displayLatest.id);
   };
 
   const handleDownloadPDF = (reportId?: string) => {
@@ -215,32 +180,10 @@ const Reports = () => {
 
     if (!report) return;
 
-    // Try to find the full HTML report from user_reports
-    const sourceFile = report.source_file;
-    const fullReportData = userReports[`id:${report.id}`] ?? (sourceFile ? userReports[sourceFile] : null);
-    const reportHtml = fullReportData?.reportHtml;
-
-    console.log('Download PDF - source_file:', sourceFile);
-    console.log('Download PDF - fullReportData keys:', fullReportData ? Object.keys(fullReportData) : 'none');
-    console.log('Download PDF - has reportHtml:', !!reportHtml);
-
-    // If we have the full HTML report from n8n, use it!
+    // Use the full leadership report saved with this upload
+    const reportHtml = getReportHtml(report);
     if (reportHtml) {
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) return;
-
-      printWindow.document.write(reportHtml);
-      printWindow.document.close();
-      printWindow.focus();
-
-      // Wait for the logo to load (up to 4 seconds) so it appears in the PDF
-      const started = Date.now();
-      const printWhenReady = () => {
-        const images = Array.from(printWindow.document.images);
-        if (images.every((img) => img.complete) || Date.now() - started > 4000) printWindow.print();
-        else setTimeout(printWhenReady, 200);
-      };
-      setTimeout(printWhenReady, 300);
+      openLeadershipReport(reportHtml, true);
       return;
     }
 
@@ -288,7 +231,7 @@ const Reports = () => {
 
         <h2>Executive Summary</h2>
         <p>This report provides a comprehensive overview of your organisation's carbon emissions.
-        Total emissions for the reporting period amount to <strong>${totalEmissions.toLocaleString('en-AU', { maximumFractionDigits: 2 })} tonnes of CO2 equivalent (t CO2e)</strong>.</p>
+        Total emissions for the reporting period amount to <strong>${(report.total_emissions ?? 0).toLocaleString('en-AU', { maximumFractionDigits: 2 })} tonnes of CO2 equivalent (t CO2e)</strong>.</p>
 
         <h2>Scope Classification</h2>
         <div class="scope-grid">
@@ -352,6 +295,9 @@ const Reports = () => {
   };
 
   const handleViewReport = (reportId: string) => {
+    const html = getReportHtml(emissions.find((e) => e.id === reportId));
+    if (html && openLeadershipReport(html)) return;
+    // No saved leadership report (older upload): show the summary instead
     setSelectedReportId(reportId);
     setViewDialogOpen(true);
   };
@@ -521,7 +467,7 @@ const Reports = () => {
                   Print Report
                 </Button>
                 <Button
-                  onClick={() => handleDownloadPDF()}
+                  onClick={() => displayLatest && handleDownloadPDF(displayLatest.id)}
                   className="gradient-primary"
                 >
                   <Download className="h-4 w-4 mr-2" />
@@ -637,7 +583,7 @@ const Reports = () => {
         </Card>
 
         {/* View Report Dialog */}
-        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <Dialog open={viewDialogOpen} onOpenChange={(open) => { setViewDialogOpen(open); if (!open) setSelectedReportId(null); }}>
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl">
