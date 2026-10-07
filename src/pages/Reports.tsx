@@ -190,6 +190,7 @@ const Reports = () => {
       { name: "Water", emissions: selectedReport.water_emissions ?? 0 },
       { name: "Waste", emissions: selectedReport.waste_emissions ?? 0 },
       { name: "Fuel", emissions: selectedReport.fuel_emissions ?? 0 },
+      { name: "Paper", emissions: selectedReport.paper_emissions ?? 0 },
     ];
 
     const total = cats.reduce((sum, cat) => sum + cat.emissions, 0);
@@ -257,6 +258,7 @@ const Reports = () => {
       { name: "Water", emissions: report.water_emissions ?? 0 },
       { name: "Waste", emissions: report.waste_emissions ?? 0 },
       { name: "Fuel", emissions: report.fuel_emissions ?? 0 },
+      { name: "Paper", emissions: report.paper_emissions ?? 0 },
     ];
     const total = cats.reduce((sum, cat) => sum + cat.emissions, 0);
 
@@ -705,6 +707,7 @@ const Reports = () => {
                       { name: "Flights", value: selectedReport.flights_emissions },
                       { name: "Water", value: selectedReport.water_emissions },
                       { name: "Waste", value: selectedReport.waste_emissions },
+                      { name: "Paper", value: selectedReport.paper_emissions },
                     ].map(cat => (
                       <div key={cat.name} className="flex justify-between py-2 border-b">
                         <span className="text-foreground">{cat.name}</span>
